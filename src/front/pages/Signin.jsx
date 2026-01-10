@@ -6,6 +6,7 @@ export const Signin = () => {
             <div className="d-flex justify-content-center align-items-center vh-100">
                 <div className="card p-4" style={{ width: "350px" }}>
                     <form>
+                        <h1 class="text-center">Sign In</h1>
                         <div className="mb-3">
                             <label htmlFor="exampleInputEmail1" className="form-label">Email address</label>
                             <input
@@ -16,7 +17,6 @@ export const Signin = () => {
                                 required
                             />
                             <div id="emailHelp" className="form-text">
-                                We'll never share your email with anyone else.
                             </div>
                         </div>
 
@@ -36,12 +36,22 @@ export const Signin = () => {
                                 className="form-check-input"
                                 id="exampleCheck1"
                             />
+
                             <label className="form-check-label" htmlFor="exampleCheck1">
-                                Remember me
+                                I agree to the Terms
+                            </label>
+                        </div>
+                        <div className="mb-3 form-check">
+                            <input
+                                type="checkbox"
+                                className="form-check-input"
+                                id="exampleCheck2"
+                            />
+                            <label className="form-check-label" htmlFor="exampleCheck2">
+                                Subscribe to newsletter
                             </label>
                         </div>
 
-                        <button type="submit" className="btn btn-primary w-100">Log in</button>
                         <button type="submit" className="btn btn-primary w-100 mt-2">Sign up</button>
                     </form>
 
