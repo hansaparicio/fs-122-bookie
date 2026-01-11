@@ -1,0 +1,33 @@
+.wrapper_aboutus {
+    background-color: #E5E4E2; 
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Arial', sans-serif; 
+    color: #231B59; 
+}
+
+
+.text_aboutus_title {
+    color: #231B59;
+    font-weight: bold;
+    font-size: 3rem;
+    margin-bottom: 20px;    
+}
+.content-row p {
+    font-size: 1.2rem;
+    line-height: 1.6;
+    margin: 0;
+}
+@keyframes flotar {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+    100% { transform: translateY(0px); }
+}
+.imagen-animada {
+    animation: flotar 3s ease-in-out infinite;
+}
+.retraso{
+    animation-delay: 1.5s;
+}
