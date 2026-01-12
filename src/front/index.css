@@ -1,5 +1,4 @@
 :root {
-<<<<<<< HEAD
   --azul-oscuro: #231B59;
   --azul-medio: #5DA4D9;
   --azul-claro: #11DA3E7;
@@ -11,7 +10,6 @@
 body {
   background-color: var(--gris-fondo);
   margin: 0;
-=======
   --book-dark: #231B59;
   --book-primary: #5DA4D9;
   --book-lavender: #B5B0F7; 
@@ -21,6 +19,5 @@ body {
 
 body {
   background-color: var(--book-bg) !important;
->>>>>>> 0a8aed14c4d6f0dd43e8817f0702a6fe97fa1200
   font-family: 'Inter', sans-serif;
 }
