@@ -1,0 +1,12 @@
+:root {
+  --book-dark: #231B59;
+  --book-primary: #5DA4D9;
+  --book-lavender: #B5B0F7; 
+  --book-wine: #730202;
+  --book-bg: #EAE8E4; /* Light Shell Gray */
+}
+
+body {
+  background-color: var(--book-bg) !important;
+  font-family: 'Inter', sans-serif;
+}
