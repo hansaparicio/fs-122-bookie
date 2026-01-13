@@ -120,6 +120,14 @@ export const Home = () => {
                             </div>
                         ))}
                     </div>
+
+                    <Link
+                        to="/"
+                        className="btn btn-outline-wine rounded-pill px-4 fw-bold ms-3 mt-4"
+                    >
+                        Log Out
+                    </Link>
+
                 </div>
 
             </div>
