@@ -1,45 +1,41 @@
-import { Link } from "react-router-dom";
+import React from "react";
+import { NavLink } from "react-router-dom";
 
 export const Navbar = () => {
-
 	return (
-		<nav className="navbar navbar-light bg-light">
-			<div className="ml-auto">
-				<Link to="/">
-					<button className="btn btn-primary">Log in</button>
-				</Link>
-			</div>
-			<div className="container">
-				<div className="ml-auto">
-					<Link to="/signin">
-						<button className="btn btn-primary">Sign in</button>
-					</Link>
-				</div>
-				<div className="ml-auto">
-					<Link to="/Aboutus">
-						<button className="btn btn-primary">Aboutus</button>
-					</Link>
-				</div>
-				<div className="ml-auto">
-					<Link to="/home">
-						<button className="btn btn-primary">Home</button>
-					</Link>
-				</div>
-
-				<div className="ml-auto">
-					<Link to="/reset-password">
-						<button className="btn btn-primary">Reset password</button>
-					</Link>
-				</div>
-
-				<div className="ml-auto">
-					<Link to="/chat">
-						<button className="btn btn-primary">Chat</button>
-					</Link>
-				</div>
-
-			</div>
+		<nav className="app-sidebar">
+			<ul className="sidebar-menu">
+				<li className="sidebar-item">
+					<NavLink to="/home" className={({ isActive }) => isActive ? "sidebar-link active" : "sidebar-link"}>
+						<span className="icon">🏠</span>
+						<span>Home</span>
+					</NavLink>
+				</li>
+				<li className="sidebar-item">
+					<NavLink to="/events" className={({ isActive }) => isActive ? "sidebar-link active" : "sidebar-link"}>
+						<span className="icon">📅</span>
+						<span>Events</span>
+					</NavLink>
+				</li>
+				<li className="sidebar-item">
+					<NavLink to="/chat" className={({ isActive }) => isActive ? "sidebar-link active" : "sidebar-link"}>
+						<span className="icon">💬</span>
+						<span>Chat</span>
+					</NavLink>
+				</li>
+				<li className="sidebar-item">
+					<NavLink to="/profile" className={({ isActive }) => isActive ? "sidebar-link active" : "sidebar-link"}>
+						<span className="icon">👤</span>
+						<span>Profile</span>
+					</NavLink>
+				</li>
+				<li className="sidebar-item">
+					<NavLink to="/aboutus" className={({ isActive }) => isActive ? "sidebar-link active" : "sidebar-link"}>
+						<span className="icon">👫</span>
+						<span>Aboutus</span>
+					</NavLink>
+				</li>
+			</ul>
 		</nav>
 	);
 };
-
