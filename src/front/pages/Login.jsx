@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate, Link } from "react-router-dom";
+import "./Login.css";
+import logo from "../assets/img/logo.png";
 
 export const Login = () => {
 
@@ -62,7 +64,10 @@ export const Login = () => {
 	return (
 
 
-		<div className="d-flex justify-content-center align-items-center vh-100">
+		<div className="login-page d-flex justify-content-center align-items-center vh-100">
+			<div className="login-logo-container">
+				<img src={logo} alt="Bookie Logo" className="login-logo" />
+			</div>
 			<div className="card p-4" style={{ width: "350px" }}>
 				<form onSubmit={handleSubmit}>
 					<h1 className="text-center">Log In</h1>

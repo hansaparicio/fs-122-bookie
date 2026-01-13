@@ -1,56 +1,50 @@
-/* Contenedor específico para no afectar otras páginas */
-.signin-wrapper {
-    background-color: #f4f1ee; /* Fondo crema claro */
+
+.login-page {
+    background-color: #f4f1ee;
     min-height: 100vh;
+    display: flex;                 
+    flex-direction: column;       
+    justify-content: center;       
+    align-items: center;           
 }
 
-/* --- AJUSTE PARA EL LOGO TRANSPARENTE --- */
-.signin-wrapper .text-center.mb-4 img {
-    width: 180px !important;
+/* Logo igual que en Signin */
+.login-page .login-logo {
+    width: 180px;
     height: auto;
-    mix-blend-mode: multiply; 
-    filter: contrast(110%); /* Opcional: da más fuerza al logo */
-    
+    mix-blend-mode: multiply;
+    filter: contrast(110%);
 }
 
-
-/* Tarjeta principal */
-.signin-wrapper .card {
+/* Card del login, mismo estilo que Signin pero adaptado */
+.login-page .card {
     border: none !important;
     border-radius: 25px !important;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05) !important;
-    width: 380px !important;  
-    max-width: 90% !important;
-    padding: 1.2rem !important; 
+    padding: 2.5rem !important;
+    width: 380px !important;
+    max-width: 90%;
     background-color: #ffffff;
-    margin-top: -8px !important;  /* sube la card hacia el logo */
 }
 
-
-
-/* Título Sign In */
-.signin-wrapper h1 {
-    color: #3b368c !important; /* Morado oscuro */
+/* Título Log In */
+.login-page h1 {
+    color: #3b368c !important;
     font-weight: 800 !important;
     font-size: 2.5rem !important;
     margin-bottom: 1.5rem !important;
     letter-spacing: -1px;
 }
 
-
-
-
-/* Labels del Signin con el mismo estilo que Login */
-.signin-wrapper .form-label {
+/* Labels */
+.login-page .form-label {
     color: #5d5a9d !important;
-    font-weight: 600 !important;
-    margin-bottom: 6px !important;
-    font-size: 0.9rem !important;
+    font-weight: 600;
+    margin-bottom: 6px;
 }
 
-
-/* Campos de texto */
-.signin-wrapper .form-control {
+/* Inputs */
+.login-page .form-control {
     background-color: #fcfcfc !important;
     border: 1.5px solid #e8e8e8 !important;
     border-radius: 12px !important;
@@ -59,30 +53,30 @@
     margin-bottom: 10px;
 }
 
-.signin-wrapper .form-control:focus {
+.login-page .form-control:focus {
     border-color: #7d73d1 !important;
     box-shadow: 0 0 0 0.2rem rgba(125, 115, 209, 0.1) !important;
 }
 
-/* Checkboxes */
-.signin-wrapper .form-check-label {
+/* Checkbox */
+.login-page .form-check-label {
     color: #5d5a9d !important;
     font-size: 0.9rem;
     cursor: pointer;
 }
 
-.signin-wrapper .form-check-input {
+.login-page .form-check-input {
     border-color: #7d73d1 !important;
     cursor: pointer;
 }
 
-.signin-wrapper .form-check-input:checked {
+.login-page .form-check-input:checked {
     background-color: #7d73d1 !important;
     border-color: #7d73d1 !important;
 }
 
-/* Botón Sign Up */
-.signin-wrapper .btn-primary {
+/* Botones */
+.login-page .btn-primary {
     background-color: #7d73d1 !important;
     border: none !important;
     border-radius: 15px !important;
@@ -95,14 +89,14 @@
     margin-top: 10px;
 }
 
-.signin-wrapper .btn-primary:hover {
+.login-page .btn-primary:hover {
     background-color: #6a60bd !important;
     transform: translateY(-1px);
     box-shadow: 0 5px 15px rgba(125, 115, 209, 0.3) !important;
 }
 
-/* Alerta de error */
-.signin-wrapper .alert-danger {
+
+.login-page .alert-danger {
     border-radius: 12px;
     font-size: 0.85rem;
     padding: 12px;

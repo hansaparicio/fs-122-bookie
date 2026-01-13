@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import "./Signin.css";
+import logo from "../assets/img/logo.png";
 
 export const Signin = () => {
     const [formData, setFormData] = useState({
@@ -116,9 +117,10 @@ export const Signin = () => {
     return (
 
         <>
-            <div className="signin-wrapper d-flex flex-column justify-content-center align-items-center vh-100">
+            <div className="signin-wrapper d-flex flex-column justify-content-center align-items-center ">
                 {/*Foto logo  */}
                 <div className="text-center mb-4">
+                    <img src={logo} alt="Bookie Logo" style={{ width: "180px", height: "auto" }} />
                 </div>
 
                 <div className="card p-4" style={{ width: "400px" }}>
