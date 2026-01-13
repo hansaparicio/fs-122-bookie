@@ -34,9 +34,7 @@
 }
 
 /* Ocultar etiquetas para estilo moderno */
-.signin-wrapper .form-label {
-    display: none;
-}
+
 
 /* Campos de texto */
 .signin-wrapper .form-control {
