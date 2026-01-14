@@ -1,5 +1,5 @@
 import React from 'react';
-import './home.css';
+import './Home.css';
 import portadaLibro from "../assets/img/portada_Libro.png";
 import { Link } from 'react-router-dom';
 

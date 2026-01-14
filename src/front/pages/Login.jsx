@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate, Link } from "react-router-dom";
 import "./Login.css";
-import logo from "../assets/img/logo.png";
+import logo from "../assets/img/Logo.png";
 
 export const Login = () => {
 
@@ -66,7 +66,7 @@ export const Login = () => {
 
 		<div className="login-page d-flex justify-content-center align-items-center vh-100">
 			<div className="login-logo-container">
-				<img src={logo} alt="Bookie Logo" className="login-logo" />
+				<img src={logo} alt="Bookie Logo" className="login-logo " />
 			</div>
 			<div className="card p-4" style={{ width: "350px" }}>
 				<form onSubmit={handleSubmit}>

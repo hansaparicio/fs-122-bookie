@@ -54,6 +54,7 @@
 		]
 	},
 	"dependencies": {
+		"@heroicons/react": "^2.2.0",
 		"bootstrap": "^5.3.8",
 		"cors": "^2.8.5",
 		"prop-types": "^15.8.1",

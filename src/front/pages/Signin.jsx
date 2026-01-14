@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import "./Signin.css";
-import logo from "../assets/img/logo.png";
+import logo from "../assets/img/Logo.png";
 
 export const Signin = () => {
     const [formData, setFormData] = useState({
