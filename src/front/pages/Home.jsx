@@ -26,9 +26,9 @@ export const Home = () => {
             <div className="row g-4">
 
                 {/* COLUMNA IZQUIERDA */}
-                <div className="col-12 col-xl-5">
+                <div className="col-12 col-xl-5 left-container">
                     <section className="mb-5">
-                        <h5 className="fw-bold mb-4">READING NOW</h5>
+                        <h5 className="fw-bold mb-4 glitch-title" data-text="READING NOW">READING NOW</h5>
                         <div className="d-flex gap-3 flex-wrap">
 
                             {/* Tarjeta Libro */}
@@ -82,7 +82,7 @@ export const Home = () => {
                     </section>
 
                     <section>
-                        <h5 className="fw-bold mb-4">ACTIVITY FEED</h5>
+                        <h5 className="fw-bold mb-4 glitch-title" data-text="ACTIVITY FEED">ACTIVITY FEED</h5>
                         <div className="d-flex gap-3">
                             <div className="card border-0 p-4 text-center shadow-sm flex-grow-1 bg-lavender-card" style={{ borderRadius: 'var(--card-radius)' }}>
                                 <span className="fs-1">📅</span>
@@ -105,7 +105,7 @@ export const Home = () => {
                 </div>
 
                 {/* COLUMNA DERECHA */}
-                <div className="col-12 col-xl-7 border-start-xl">
+                <div className="col-12 col-xl-7 right-container">
                     <div className="d-flex justify-content-center mb-5">
                         <button className="btn btn-outline-wine rounded-pill px-5 fw-bold" onClick={() => setIsModalOpen(true)}>
                             ✚ Create Your Event
@@ -122,7 +122,7 @@ export const Home = () => {
                         {/* 3. Mapeamos el ESTADO eventList */}
                         {eventList.map((ev, index) => (
                             <div className="col-md-6" key={index}>
-                                <div className="card border-0 shadow-sm p-3 d-flex flex-row align-items-center" style={{ borderRadius: '15px' }}>
+                                <div className="card border-0 shadow-sm p-3 d-flex flex-row align-items-center  event-card" style={{ borderRadius: '15px' }}>
                                     {/* Aquí mostramos el icono dinámico */}
                                     <div className="rounded-circle p-3 me-3 fs-4" style={{ backgroundColor: 'var(--book-lavender)' }}>
                                         {ev.icon}
