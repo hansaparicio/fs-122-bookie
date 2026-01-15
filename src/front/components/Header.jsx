@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import logo from "../assets/img/Logo.png";
+import { HomeIcon, BellIcon } from '@heroicons/react/24/outline';
 
 export const Header = () => {
     return (
@@ -12,11 +13,13 @@ export const Header = () => {
 
             <div className="header-right-side">
 
-                <Link to="/home" style={{ textDecoration: 'none', color: 'inherit' }}>
-                    <span style={{ fontSize: "1.3rem", cursor: "pointer" }}>🏠</span>
+                <Link to="/home" className="header-icon-link">
+                    <HomeIcon className="header-icon-svg" />
                 </Link>
 
-                <span style={{ fontSize: "1.3rem", cursor: "pointer" }}>🔔</span>
+                <button className="header-icon-btn">
+                    <BellIcon className="header-icon-svg" />
+                </button>
 
                 <div className="user-profile-section">
                     <span className="user-name">Lola</span>
