@@ -1,14 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
+import CreateEventModal from '../components/CreateEventModal';
 import './Home.css';
 import portadaLibro from "../assets/img/portada_Libro.png";
 import { Link } from 'react-router-dom';
 
 
-
-
-const events = [{ title: "Classic Novel Club", date: "May 25 • 6:00 PM", image: "icon-book.png" }, { title: "Sci‑Fi Readers Meetup", date: "May 28 • 7:30 PM", image: "icon-rocket-book.png" }, { title: "Author Talk: Elena Márquez", date: "June 2 • 5:00 PM", image: "icon-microphone.png" }, { title: "Silent Reading Party", date: "June 5 • 8:00 PM", image: "icon-coffee-book.png" }, { title: "Creative Writing Workshop", date: "June 10 • 4:00 PM", image: "icon-pencil.png" }, { title: "Book Swap Sunday", date: "June 15 • 11:00 AM", image: "icon-exchange.png" }];
+const [eventList, setEventList] = useState([
+    { title: "Classic Novel Club", date: "May 25 • 6:00 PM", icon: "📖" },
+    { title: "Sci‑Fi Readers Meetup", date: "May 28 • 7:30 PM", icon: "🚀" },
+    { title: "Author Talk: Elena Márquez", date: "June 2 • 5:00 PM", icon: "🎤" },
+    { title: "Silent Reading Party", date: "June 5 • 8:00 PM", icon: "☕" },
+    { title: "Creative Writing Workshop", date: "June 10 • 4:00 PM", icon: "📝" },
+    { title: "Book Swap Sunday", date: "June 15 • 11:00 AM", icon: "🔄" }
+]);
 
 export const Home = () => {
+
+    const handleAddEvent = (newEvent) => {
+        setEventList([newEvent, ...eventList]);
+    };
+
     return (
         <div className="container-fluid py-4" style={{ backgroundColor: 'var(--book-bg)', minHeight: '100vh' }}>
             <div className="row g-4">
@@ -95,22 +106,26 @@ export const Home = () => {
                 {/* COLUMNA DERECHA */}
                 <div className="col-12 col-xl-7 border-start-xl">
                     <div className="d-flex justify-content-center mb-5">
-                        <button className="btn btn-outline-wine rounded-pill px-5 fw-bold">
-                            Create Your Event
+                        <button className="btn btn-outline-wine rounded-pill px-5 fw-bold" onClick={() => setIsModalOpen(true)}>
+                            ✚ Create Your Event
                         </button>
-                        <span className="p-2 rounded-5 btn-wine ms-3"> 📅</span>
+
                     </div>
 
                     <div className="d-flex justify-content-between align-items-center mb-4">
-                        <h4 className="fw-bold">Upcoming Events</h4>
+                        <h4 className="fw-bold"> Upcoming Events</h4>
 
                     </div>
 
                     <div className="row g-3">
-                        {events.map((ev, index) => (
+                        {/* 3. Mapeamos el ESTADO eventList */}
+                        {eventList.map((ev, index) => (
                             <div className="col-md-6" key={index}>
                                 <div className="card border-0 shadow-sm p-3 d-flex flex-row align-items-center" style={{ borderRadius: '15px' }}>
-                                    <div className="rounded-circle p-3 me-3" style={{ backgroundColor: 'var(--book-lavender)' }}>📖</div>
+                                    {/* Aquí mostramos el icono dinámico */}
+                                    <div className="rounded-circle p-3 me-3 fs-4" style={{ backgroundColor: 'var(--book-lavender)' }}>
+                                        {ev.icon}
+                                    </div>
                                     <div className="flex-grow-1 text-start">
                                         <h6 className="fw-bold mb-0 small">{ev.title}</h6>
                                         <p className="text-muted mb-0" style={{ fontSize: '0.7rem' }}>{ev.date}</p>
@@ -121,15 +136,17 @@ export const Home = () => {
                         ))}
                     </div>
 
-                    <Link
-                        to="/"
-                        className="btn btn-outline-wine rounded-pill px-4 fw-bold ms-3 mt-4"
-                    >
+                    <Link to="/" className="btn btn-outline-wine rounded-pill px-4 fw-bold ms-3 mt-4">
                         Log Out
                     </Link>
 
+                    {/* 4. Pasamos la función handleAddEvent al Modal */}
+                    <CreateEventModal
+                        isOpen={isModalOpen}
+                        onClose={() => setIsModalOpen(false)}
+                        onSave={handleAddEvent}
+                    />
                 </div>
-
             </div>
         </div>
     );
