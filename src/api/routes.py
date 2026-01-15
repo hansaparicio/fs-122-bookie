@@ -74,3 +74,15 @@ def login():
     token = create_token(user.id)
 
     return jsonify({"token": token}), 200
+
+
+@api.route('/users', methods=['GET'])
+def get_users():
+    users = User.query.all()
+    return jsonify([u.serialize() for u in users]), 200
+
+
+# Quiero poder crear eventos apuntarme a ellos, modificarlos y borrarlos
+@api.route('/event',methods=["GET","POST","UPDATE","DELETE"])
+def handle_event():
+    return jsonify({"message":"Event endpoint - to be implemented"}),200

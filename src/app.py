@@ -30,6 +30,7 @@ app.url_map.strict_slashes = False
 # database condiguration
 
 database_url = os.getenv("DATABASE_URL")
+print("DATABASE_URL:", database_url)
 if database_url:
     # Si DATABASE_URL empieza con "postgres://", cambiarlo a "postgresql://"
     # (SQLAlchemy requiere postgresql://, no postgres://)
@@ -65,7 +66,6 @@ def handle_invalid_usage(error):
     return jsonify(error.to_dict()), error.status_code
 
 # generate sitemap with all your endpoints
-
 
 @app.route('/')
 def sitemap():

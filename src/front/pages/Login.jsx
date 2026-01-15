@@ -111,7 +111,7 @@ export const Login = () => {
 						<label className="form-check-label" htmlFor="exampleCheck1">
 							Remember me
 						</label>
-						<p><a href="#" class="link-underline-primary">Password forgotten?</a></p>
+						<p><a href="#" className="link-underline-primary">Password forgotten?</a></p>
 					</div>
 
 					<button type="submit" className="btn btn-primary w-100">Log in</button>

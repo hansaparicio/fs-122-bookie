@@ -82,12 +82,12 @@ export const Signin = () => {
                 const data = await response.json();
                 console.log("Signup successful:", data);
                 setLoading(false);
-                navigate("/login");
+                navigate("/home");
             } catch (parseError) {
                 // Si la respuesta está vacía pero el status es OK, asumir éxito
                 console.warn("Empty response, assuming success:", parseError);
                 setLoading(false);
-                navigate("/login");
+                navigate("/home");
             }
 
         } catch (error) {
