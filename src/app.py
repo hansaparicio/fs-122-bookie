@@ -21,9 +21,18 @@ static_file_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../
 
 app = Flask(__name__)
 
-CORS(app, resources={
-    r"/api/*": {"origins": ["http://localhost:3000", "http://127.0.0.1:3000"]}
-})
+CORS(
+    app,
+    resources={r"/api/*": {"origins": [
+        "http://127.0.0.1:3000",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+    ]}},
+    supports_credentials=True
+)
+
+
 app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", "dev-secret-key")
 app.url_map.strict_slashes = False
 

@@ -3,18 +3,18 @@
 This module takes care of starting the API Server, Loading the DB and Adding the endpoints
 """
 from flask import Flask, request, jsonify, url_for, Blueprint
+import flask
 import jwt
 from api.models import db, User
 from api.utils import generate_sitemap, APIException
 from flask_cors import CORS
 import jwt
 from datetime import datetime, timedelta
-from flask import current_app 
+from flask import current_app
+from flask import request, jsonify
+import requests
 
 api = Blueprint('api', __name__)
-
-# Allow CORS requests to this API
-CORS(api)
 
 def create_token(user_id: int):
     payload = {
@@ -86,3 +86,56 @@ def get_users():
 @api.route('/event',methods=["GET","POST","UPDATE","DELETE"])
 def handle_event():
     return jsonify({"message":"Event endpoint - to be implemented"}),200
+
+@api.route("/books/search", methods=["GET"])
+def books_search():
+    title = request.args.get("title", "").strip()
+    if not title:
+        return jsonify({"message": "Missing 'title' query param"}), 400
+
+    url = "https://www.googleapis.com/books/v1/volumes"
+    params = {
+        "q": f"intitle:{title}",
+        "maxResults": 10,
+        "langRestrict": "es",
+        "printType": "books",
+    }
+
+    try:
+        r = requests.get(
+            url,
+            params=params,
+            timeout=10,
+            headers={"User-Agent": "Mozilla/5.0"}
+        )
+    except requests.RequestException as e:
+        # Error de red/DNS/SSL/etc
+        return jsonify({
+            "message": "Error connecting to Google Books",
+            "error": str(e)
+        }), 502
+
+    # Si Google responde pero no 200
+    if r.status_code != 200:
+        return jsonify({
+            "message": "Google Books returned non-200",
+            "status_code": r.status_code,
+            "body": r.text[:300]
+        }), 502
+
+    data = r.json()
+    items = data.get("items", []) or []
+
+    normalized = []
+    for it in items:
+        vi = it.get("volumeInfo", {}) or {}
+        img = (vi.get("imageLinks", {}) or {})
+        normalized.append({
+            "id": it.get("id"),
+            "title": vi.get("title"),
+            "authors": vi.get("authors", []),
+            "publishedDate": vi.get("publishedDate"),
+            "thumbnail": img.get("thumbnail") or img.get("smallThumbnail"),
+        })
+
+    return jsonify({"totalItems": data.get("totalItems", 0), "items": normalized}), 200

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import CreateEventModal from '../components/CreateEventModal';
+import BookLibraryModal from '../components/BookLibraryModal'; // ⬅️ NUEVO
 import './Home.css';
 import portadaLibro from "../assets/img/portada_Libro.png";
 import { Link } from 'react-router-dom';
@@ -9,6 +10,11 @@ export const Home = () => {
     const { store, dispatch } = useGlobalReducer();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [eventList, setEventList] = useState(store.initialEventList);
+
+    // ⬇️ NUEVO (mínimo)
+    const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+    const [selectedBook, setSelectedBook] = useState(null);
+
     const handleAddEvent = (newEvent) => {
         dispatch({
             type: 'add_event',
@@ -17,26 +23,49 @@ export const Home = () => {
     };
 
     return (
-
-        <div className="container-fluid d-flex justify-content-center align-items-center" style={{ backgroundColor: 'var(--book-bg)', minHeight: "90%" }}>
+        <div className="container-fluid d-flex justify-content-center align-items-center"
+            style={{ backgroundColor: 'var(--book-bg)', minHeight: "90%" }}>
             <div className="row gap-3 mx-5">
 
                 {/* COLUMNA IZQUIERDA */}
                 <div className="card-shadow col-5 left-container">
                     <section className="mb-5">
-                        <h5 className="fw-bold mb-4 glitch-title" data-text="READING NOW">READING NOW</h5>
+                        <h5 className="fw-bold mb-4 glitch-title" data-text="READING NOW">
+                            READING NOW
+                        </h5>
+
                         <div className="d-flex gap-3 flex-wrap">
 
-                            {/* Tarjeta Libro */}
-                            <div className="card border-0 shadow-sm p-3 text-center" style={{ borderRadius: 'var(--card-radius)', width: '180px' }}>
+                            {/* TARJETA LIBRO (click abre librería) */}
+                            <button
+                                className="card border-0 shadow-sm p-3 text-center"
+                                style={{
+                                    borderRadius: 'var(--card-radius)',
+                                    width: '180px',
+                                    cursor: "pointer"
+                                }}
+                                onClick={() => setIsLibraryOpen(true)}
+                            >
                                 <div className="book-card-img shadow-sm">
-                                    <img src={portadaLibro} alt="Book cover" className="w-100 h-100 object-fit-cover" />
+                                    <img
+                                        src={selectedBook?.thumbnail || portadaLibro}
+                                        alt="Book cover"
+                                        className="w-100 h-100 object-fit-cover"
+                                    />
                                 </div>
-                                <span className="fw-bold small">Your Book !!</span>
-                            </div>
 
-                            {/* Tarjeta Social */}
-                            <div className="card border-0 shadow-sm p-4 flex-grow-1" style={{ borderRadius: 'var(--card-radius)' }}>
+                                <span className="fw-bold small">
+                                    {selectedBook?.title || "Your Book !!"}
+                                </span>
+
+                                <span className="text-muted" style={{ fontSize: "0.7rem" }}>
+                                    Click para elegir
+                                </span>
+                            </button>
+
+                            {/* TARJETA SOCIAL (sin cambios) */}
+                            <div className="card border-0 shadow-sm p-4 flex-grow-1"
+                                style={{ borderRadius: 'var(--card-radius)' }}>
                                 <h6 className="fw-bold">Like-minded readers</h6>
 
                                 <div className="d-flex my-2">
@@ -64,8 +93,9 @@ export const Home = () => {
                                     />
                                 </div>
 
-                                {/* Chat aquí */}
-                                <p className="small text-muted">"Aure and 12 others are here."</p>
+                                <p className="small text-muted">
+                                    "Aure and 12 others are here."
+                                </p>
 
                                 <Link to="/chat">
                                     <button className="btn btn-wine w-100 py-2 mt-auto rounded-3">
@@ -73,22 +103,29 @@ export const Home = () => {
                                     </button>
                                 </Link>
                             </div>
-
                         </div>
                     </section>
 
+                    {/* ACTIVITY FEED (sin cambios) */}
                     <section>
-                        <h5 className="fw-bold mb-4 glitch-title" data-text="ACTIVITY FEED">ACTIVITY FEED</h5>
+                        <h5 className="fw-bold mb-4 glitch-title" data-text="ACTIVITY FEED">
+                            ACTIVITY FEED
+                        </h5>
+
                         <div className="d-flex gap-3">
-                            <div className="card border-0 p-4 text-center shadow-sm flex-grow-1 bg-lavender-card" style={{ borderRadius: 'var(--card-radius)' }}>
+                            <div className="card border-0 p-4 text-center shadow-sm flex-grow-1 bg-lavender-card"
+                                style={{ borderRadius: 'var(--card-radius)' }}>
                                 <span className="fs-1">📅</span>
                                 <h6 className="fw-bold mt-2 mb-1">Explore Events</h6>
                                 <p className="small text-muted mb-0">Clubs & Meetups</p>
                             </div>
 
-                            <div className="card border-0 p-3 shadow-sm flex-grow-1 bg-white" style={{ borderRadius: 'var(--card-radius)' }}>
+                            <div className="card border-0 p-3 shadow-sm flex-grow-1 bg-white"
+                                style={{ borderRadius: 'var(--card-radius)' }}>
                                 <div className="card-body p-1 d-flex flex-column h-100 text-start">
-                                    <p className="small fw-medium mb-2">“ Aure and 12 others are talking about this chapter... ”</p>
+                                    <p className="small fw-medium mb-2">
+                                        “ Aure and 12 others are talking about this chapter... ”
+                                    </p>
                                     <div className="text-end text-muted opacity-25 fs-4 mt-n2">”</div>
                                     <div className="d-flex justify-content-between mt-auto pt-2 border-top small text-muted">
                                         <span>❤️ 64k</span>
@@ -100,10 +137,12 @@ export const Home = () => {
                     </section>
                 </div>
 
-                {/* COLUMNA DERECHA */}
+                {/* COLUMNA DERECHA (sin cambios) */}
                 <div className="card-shadow col-6 right-container">
                     <div className="d-flex justify-content-center mb-5">
-                        <button className="btn btn-outline-wine rounded-pill px-5 fw-bold" onClick={() => setIsModalOpen(true)}>
+                        <button
+                            className="btn btn-outline-wine rounded-pill px-5 fw-bold"
+                            onClick={() => setIsModalOpen(true)}>
                             ✚ Create Your Event
                         </button>
                     </div>
@@ -113,45 +152,36 @@ export const Home = () => {
                     </div>
 
                     <div className="row g-3">
-                        {/* 3. Mapeamos el ESTADO eventList */}
-                        {
-                            store.eventGlobalList.length === 0 ? eventList.map((ev, index) => (
-                                <div className="col-md-6" key={index}>
-                                    <div className="card border-0 shadow-sm p-3 d-flex flex-row align-items-center  event-card" style={{ borderRadius: '15px' }}>
-                                        {/* Aquí mostramos el icono dinámico */}
-                                        <div className="rounded-circle p-3 me-3 fs-4" style={{ backgroundColor: 'var(--book-lavender)' }}>
-                                            {ev.icon}
-                                        </div>
-                                        <div className="flex-grow-1 text-start">
-                                            <h6 className="fw-bold mb-0 small">{ev.title}</h6>
-                                            <p className="text-muted mb-0" style={{ fontSize: '0.7rem' }}>{ev.date}</p>
-                                        </div>
-                                        <button className="btn btn-wine btn-sm rounded-pill px-3">View More</button>
+                        {(store.eventGlobalList.length === 0
+                            ? eventList
+                            : store.eventGlobalList
+                        ).map((ev, index) => (
+                            <div className="col-md-6" key={index}>
+                                <div className="card border-0 shadow-sm p-3 d-flex flex-row align-items-center event-card"
+                                    style={{ borderRadius: '15px' }}>
+                                    <div className="rounded-circle p-3 me-3 fs-4"
+                                        style={{ backgroundColor: 'var(--book-lavender)' }}>
+                                        {ev.icon}
                                     </div>
+                                    <div className="flex-grow-1 text-start">
+                                        <h6 className="fw-bold mb-0 small">{ev.title}</h6>
+                                        <p className="text-muted mb-0"
+                                            style={{ fontSize: '0.7rem' }}>
+                                            {ev.date}
+                                        </p>
+                                    </div>
+                                    <button className="btn btn-wine btn-sm rounded-pill px-3">
+                                        View More
+                                    </button>
                                 </div>
-                            )) :
-                                store.eventGlobalList.map((ev, index) => (
-                                    <div className="col-md-6" key={index}>
-                                        <div className="card border-0 shadow-sm p-3 d-flex flex-row align-items-center  event-card" style={{ borderRadius: '15px' }}>
-                                            {/* Aquí mostramos el icono dinámico */}
-                                            <div className="rounded-circle p-3 me-3 fs-4" style={{ backgroundColor: 'var(--book-lavender)' }}>
-                                                {ev.icon}
-                                            </div>
-                                            <div className="flex-grow-1 text-start">
-                                                <h6 className="fw-bold mb-0 small">{ev.title}</h6>
-                                                <p className="text-muted mb-0" style={{ fontSize: '0.7rem' }}>{ev.date}</p>
-                                            </div>
-                                            <button className="btn btn-wine btn-sm rounded-pill px-3">View More</button>
-                                        </div>
-                                    </div>
-                                ))}
+                            </div>
+                        ))}
                     </div>
 
                     <Link to="/" className="btn btn-outline-wine rounded-pill px-4 fw-bold ms-3 mt-4">
                         Log Out
                     </Link>
 
-                    {/* 4. Pasamos la función handleAddEvent al Modal */}
                     <CreateEventModal
                         isOpen={isModalOpen}
                         onClose={() => setIsModalOpen(false)}
@@ -159,6 +189,14 @@ export const Home = () => {
                     />
                 </div>
             </div>
+
+            {/* MODAL LIBRERÍA */}
+            <BookLibraryModal
+                isOpen={isLibraryOpen}
+                onClose={() => setIsLibraryOpen(false)}
+                onSelect={setSelectedBook}
+            />
         </div>
     );
 };
+export default Home;
