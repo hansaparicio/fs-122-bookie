@@ -50,7 +50,7 @@ export const Signin = () => {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`${backendUrl}/api/signup`, {
+      const response = await fetch(`${backendUrl}/signup`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

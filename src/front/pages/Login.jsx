@@ -32,7 +32,7 @@ export const Login = () => {
 				return;
 			}
 
-			const response = await fetch(`${backendUrl}/auth/login`, {
+			const response = await fetch(`${backendUrl}/login`, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
