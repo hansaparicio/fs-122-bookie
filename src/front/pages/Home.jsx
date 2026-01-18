@@ -5,15 +5,16 @@ import "./Home.css";
 import portadaLibro from "../assets/img/portada_Libro.png";
 import { Link } from "react-router-dom";
 import useGlobalReducer from "../hooks/useGlobalReducer";
+import { useBook } from "../components/BookContext";
 
 const API_BASE = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
 
 export const Home = () => {
   const { store, dispatch } = useGlobalReducer();
+  const { selectedBook, selectBook } = useBook();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [eventList, setEventList] = useState(store.initialEventList);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
-  const [selectedBook, setSelectedBook] = useState(null);
   const [backendEvents, setBackendEvents] = useState([]);
 
   const currentUserId = store?.currentUser?.id;
@@ -24,7 +25,7 @@ export const Home = () => {
         const resp = await fetch(`${API_BASE}/api/events`);
         const data = await resp.json();
         if (resp.ok) setBackendEvents(data);
-      } catch (e) {}
+      } catch (e) { }
     };
     loadEvents();
   }, []);
@@ -60,12 +61,17 @@ export const Home = () => {
     }
   };
 
+  const handleSelectBook = (book) => {
+    selectBook(book);
+    setIsLibraryOpen(false);
+  };
+
   const eventsToShow =
     backendEvents.length > 0
       ? backendEvents
       : store.eventGlobalList.length === 0
-      ? eventList
-      : store.eventGlobalList;
+        ? eventList
+        : store.eventGlobalList;
 
   return (
     <div
@@ -262,7 +268,7 @@ export const Home = () => {
       <BookLibraryModal
         isOpen={isLibraryOpen}
         onClose={() => setIsLibraryOpen(false)}
-        onSelect={setSelectedBook}
+        onSelect={handleSelectBook}
       />
     </div>
   );

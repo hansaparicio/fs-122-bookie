@@ -7,6 +7,8 @@ import { RouterProvider } from "react-router-dom";
 import { router } from "./routes";
 import { StoreProvider } from './hooks/useGlobalReducer';
 import { BackendURL } from './components/BackendURL';
+import { BookProvider } from './components/BookContext';
+import { ChatProvider } from './components/ChatContext';
 
 const Main = () => {
 
@@ -17,15 +19,15 @@ const Main = () => {
     );
     return (
         <React.StrictMode>
-            {/* Provide global state to all components */}
             <StoreProvider>
-                {/* Set up routing for the application */}
-                <RouterProvider router={router}>
-                </RouterProvider>
+                <BookProvider>
+                    <ChatProvider>
+                        <RouterProvider router={router} />
+                    </ChatProvider>
+                </BookProvider>
             </StoreProvider>
         </React.StrictMode>
     );
 }
 
-// Render the Main component into the root DOM element.
 ReactDOM.createRoot(document.getElementById('root')).render(<Main />)
