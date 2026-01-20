@@ -1,0 +1,11 @@
+POST http://localhost:3001/api/signup
+Content-Type: application/json
+
+{
+    "username": "test1user",
+    "email": "test1user@example.com",
+    "password": "password123!",
+    "accepted_term": true,
+    "suscribed_letter": false,
+    "is_active": true
+}

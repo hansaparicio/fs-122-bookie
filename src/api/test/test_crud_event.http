@@ -1,0 +1,161 @@
+### Test CRUD de Eventos
+### Este archivo contiene pruebas para todos los endpoints de eventos
+### Requiere la extensión REST Client para VS Code
+
+@baseUrl = http://localhost:3001/api
+@token = YOUR_TOKEN_HERE
+
+### 1. Obtener todos los eventos (sin autenticación - público)
+GET {{baseUrl}}/event
+Content-Type: application/json
+
+### 2. Obtener todos los eventos (con autenticación - solo del usuario)
+GET {{baseUrl}}/event
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### 3. Obtener un evento específico por ID
+GET {{baseUrl}}/event/EVENT_ID_HERE
+Content-Type: application/json
+
+### 4. Crear un nuevo evento (requiere autenticación)
+POST {{baseUrl}}/event
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "title": "Reading Party",
+    "icon": "📖",
+    "location": "Biblioteca Central",
+    "event_datetime": "2024-12-25T18:00:00"
+}
+
+### 5. Crear otro evento de ejemplo
+POST {{baseUrl}}/event
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "title": "Author Talk",
+    "icon": "🎤",
+    "location": "Auditorio Principal",
+    "event_datetime": "2024-12-30T19:30:00"
+}
+
+### 6. Crear evento tipo Party
+POST {{baseUrl}}/event
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "title": "Book Launch Celebration",
+    "icon": "🎉",
+    "location": "Café Literario",
+    "event_datetime": "2025-01-05T20:00:00"
+}
+
+### 7. Crear evento tipo Workshop
+POST {{baseUrl}}/event
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "title": "Creative Writing Workshop",
+    "icon": "📝",
+    "location": "Sala de Talleres",
+    "event_datetime": "2025-01-10T16:00:00"
+}
+
+### 8. Actualizar un evento (requiere autenticación y ser propietario)
+PUT {{baseUrl}}/event/EVENT_ID_HERE
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "title": "Reading Party Updated",
+    "icon": "📖",
+    "location": "Nueva Biblioteca Central",
+    "event_datetime": "2024-12-25T19:00:00"
+}
+
+### 9. Actualizar solo el título de un evento
+PUT {{baseUrl}}/event/EVENT_ID_HERE
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "title": "Nuevo Título del Evento"
+}
+
+### 10. Actualizar solo la ubicación
+PUT {{baseUrl}}/event/EVENT_ID_HERE
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "location": "Nueva Ubicación"
+}
+
+### 11. Actualizar solo la fecha y hora
+PUT {{baseUrl}}/event/EVENT_ID_HERE
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "event_datetime": "2025-01-15T17:00:00"
+}
+
+### 12. Eliminar un evento (requiere autenticación y ser propietario)
+DELETE {{baseUrl}}/event/EVENT_ID_HERE
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### 13. Intentar crear evento sin autenticación (debe fallar)
+POST {{baseUrl}}/event
+Content-Type: application/json
+
+{
+    "title": "Evento sin auth",
+    "icon": "📖",
+    "location": "Test",
+    "event_datetime": "2024-12-25T18:00:00"
+}
+
+### 14. Intentar crear evento con campos faltantes (debe fallar)
+POST {{baseUrl}}/event
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "title": "Evento incompleto"
+}
+
+### 15. Intentar actualizar evento de otro usuario (debe fallar)
+PUT {{baseUrl}}/event/EVENT_ID_HERE
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "title": "Intento de modificar evento ajeno"
+}
+
+### 16. Intentar eliminar evento de otro usuario (debe fallar)
+DELETE {{baseUrl}}/event/EVENT_ID_HERE
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### 17. Obtener evento con ID inválido (debe fallar)
+GET {{baseUrl}}/event/invalid-id-123
+Content-Type: application/json
+
+### 18. Crear evento con formato de fecha inválido (debe fallar)
+POST {{baseUrl}}/event
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "title": "Evento con fecha inválida",
+    "icon": "📖",
+    "location": "Test",
+    "event_datetime": "fecha-invalida"
+}
