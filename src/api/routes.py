@@ -112,11 +112,6 @@ def get_users():
     return jsonify([u.serialize() for u in users]), 200
 
 
-# Quiero poder crear eventos apuntarme a ellos, modificarlos y borrarlos
-@api.route('/event',methods=["GET","POST","UPDATE","DELETE"])
-def handle_event():
-    return jsonify({"message":"Event endpoint - to be implemented"}),200
-
 @api.route("/books/search", methods=["GET"])
 def books_search():
     title = request.args.get("title", "").strip()
@@ -160,12 +155,26 @@ def books_search():
     for it in items:
         vi = it.get("volumeInfo", {}) or {}
         img = (vi.get("imageLinks", {}) or {})
+
+        isbn = None
+        identifiers = vi.get("industryIdentifiers", []) or []
+        for ident in identifiers:
+            if ident.get("type") in ["ISBN_13", "ISBN_10"]:
+                isbn = ident.get("identifier")
+                break
+            if not isbn:
+                for ident in identifiers:
+                    if "ISBN" in (ident.get("type", "") or ""):
+                        isbn = ident.get("identifier")
+                        break
+
         normalized.append({
             "id": it.get("id"),
             "title": vi.get("title"),
             "authors": vi.get("authors", []),
             "publishedDate": vi.get("publishedDate"),
             "thumbnail": img.get("thumbnail") or img.get("smallThumbnail"),
+            "isbn" : isbn
         })
 
     return jsonify({"totalItems": data.get("totalItems", 0), "items": normalized}), 200
