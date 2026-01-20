@@ -6,13 +6,13 @@ import './index.css'
 import { RouterProvider } from "react-router-dom";
 import { router } from "./routes";
 import { StoreProvider } from './hooks/useGlobalReducer';
-import { BackendURL } from './components/BackendURL';
-import { BookProvider } from './components/BookContext';
-import { ChatProvider } from './components/ChatContext';
+import { BackendURL } from './components/BackendURL.jsx';
+import { BookProvider } from './components/BookContext.jsx';
+//import { ChatProvider } from './components/ChatContext.jsx';
 
 const Main = () => {
 
-    if (! import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_BACKEND_URL == "") return (
+    if (!(import.meta.env.VITE_BACKEND_URL) || import.meta.env.VITE_BACKEND_URL == "") return (
         <React.StrictMode>
             <BackendURL />
         </React.StrictMode>
@@ -21,9 +21,7 @@ const Main = () => {
         <React.StrictMode>
             <StoreProvider>
                 <BookProvider>
-                    <ChatProvider>
-                        <RouterProvider router={router} />
-                    </ChatProvider>
+                    <RouterProvider router={router} />
                 </BookProvider>
             </StoreProvider>
         </React.StrictMode>

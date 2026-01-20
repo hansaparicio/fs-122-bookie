@@ -26,7 +26,7 @@ import {
     leaveChannel,
     deleteChannel,
     isChannelCreator,
-} from "./utils/chat_logic";
+} from "./utiles/chat_logic";
 
 /**
  * Main Chat component that wraps Stream Chat functionality

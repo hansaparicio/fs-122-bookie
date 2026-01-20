@@ -9,7 +9,7 @@ import {
     createOrJoinBookChannel,
     generateBookChannelId,
     isUserConnected
-} from "../components/Chat/utils/chat_logic";
+} from "../components/Chat/utiles/chat_logic";
 
 // Helper function to show error toast
 const showErrorToast = (message) => {

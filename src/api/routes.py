@@ -2,38 +2,50 @@
 """
 This module takes care of starting the API Server, Loading the DB and Adding the endpoints
 """
-from flask import Flask, request, jsonify, url_for, Blueprint
-import flask
+from flask import make_response, request, jsonify, url_for, Blueprint
+import os
 import jwt
 from api.models import Event, db, User
 from api.utils import generate_sitemap, APIException
-from flask_cors import CORS
+from stream_chat import StreamChat
 import jwt
 from datetime import datetime, timedelta
 from flask import current_app
 from flask import request, jsonify
+from api.utils_scripts.auth_utils import create_refresh_token, verify_token, create_token
 import requests
-
-
 
 api = Blueprint('api', __name__)
 
-def create_token(user_id: int):
-    payload = {
-        "sub": user_id,
-        "iat": datetime.utcnow(),
-        "exp": datetime.utcnow() + timedelta(hours=5)
-    }
-    return jwt.encode(payload, current_app.config["SECRET_KEY"], algorithm="HS256")
-
-@api.route('/hello', methods=['POST', 'GET'])
-def handle_hello():
-    response_body = {
-        "message": "Hello! I'm a message that came from the backend, check the network tab on the google inspector and you will see the GET request"
-    }
-
-    return jsonify(response_body), 200
-
+def generate_stream_token(user):
+    """Generate a Stream Chat token for a user"""
+    try:
+        client = get_stream_client()
+        if not client:
+            return None
+        
+        user_id = str(user.id)
+        
+        # Try to restore the user if they were deleted, then upsert
+        try:
+            # First, try to restore the user if they were soft-deleted
+            client.restore_users([user_id])
+        except Exception:
+            # User wasn't deleted, that's fine
+            pass
+        
+        # Create/update user in Stream
+        client.upsert_user({
+            "id": user_id,
+            "name": user.username,
+            "email": user.email,
+        })
+        
+        # Generate and return token
+        return client.create_token(user_id)
+    except Exception as e:
+        print(f"Error generating Stream token: {e}")
+        return None
 
 @api.route("/signup", methods=["POST"])
 def signup():
@@ -73,9 +85,25 @@ def login():
     if not user or not user.check_password(password):
         return jsonify({"message": "Invalid credentials"}), 401
 
-    token = create_token(user.id)
+    access_token = create_token(user.id)
+    refresh_token = create_refresh_token(user.id)
 
-    return jsonify({"token": token}), 200
+    # Generar token de Stream Chat
+    stream_token = generate_stream_token(user)
+    # Crear respuesta
+    response_data = {
+        "message": "Login successful",
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "user": user.serialize(),
+    }
+    # Solo incluir stream_token si se generó correctamente
+    if stream_token:
+        response_data["stream_token"] = stream_token
+    
+    response = make_response(jsonify(response_data), 200)
+
+    return response
 
 
 @api.route('/users', methods=['GET'])
@@ -241,3 +269,285 @@ def get_event_users(event_id):
     users = event.users
 
     return jsonify([user.serialize() for user in users]), 200
+
+
+## --------------- CHAT INTEGRATION --------------- ##
+
+def get_stream_client():
+    """Initialize Stream Chat client with API credentials"""
+    api_key = os.getenv("STREAM_API_KEY")
+    api_secret = os.getenv("STREAM_API_SECRET")
+    
+    if not api_key or not api_secret:
+        raise ValueError("STREAM_API_KEY and STREAM_API_SECRET must be set in environment variables")
+    
+    return StreamChat(api_key=api_key, api_secret=api_secret)
+
+
+@api.route("/stream-token", methods=["GET"])
+def get_stream_token():
+    """
+    Generate a Stream Chat token for the authenticated user.
+    Requires a valid JWT access token in the Authorization header.
+    """
+    # Get and verify the JWT token
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return jsonify({"message": "Missing or invalid Authorization header"}), 401
+    
+    token = auth_header.split(" ")[1]
+    user_id = verify_token(token)
+    
+    if not user_id:
+        return jsonify({"message": "Invalid or expired token"}), 401
+    
+    # Get user from database
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+    
+    try:
+        # Initialize Stream client and generate token
+        client = get_stream_client()
+        
+        # Create/update user in Stream
+        client.upsert_user({
+            "id": str(user.id),
+            "name": user.username,
+            "email": user.email,
+        })
+        
+        # Generate token for the user
+        stream_token = client.create_token(str(user.id))
+        
+        return jsonify({
+            "stream_token": stream_token,
+            "user_id": str(user.id),
+            "username": user.username
+        }), 200
+        
+    except ValueError as e:
+        return jsonify({"message": str(e)}), 500
+    except Exception as e:
+        return jsonify({"message": f"Error generating Stream token: {str(e)}"}), 500
+
+
+@api.route("/chat/create-channel", methods=["POST"])
+def create_channel():
+    """
+    Create a new chat channel for a book discussion.
+    Requires: channel_id, book_title, member_ids (list of user IDs)
+    """
+    # Verify authentication
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return jsonify({"message": "Missing or invalid Authorization header"}), 401
+    
+    token = auth_header.split(" ")[1]
+    user_id = verify_token(token)
+    
+    if not user_id:
+        return jsonify({"message": "Invalid or expired token"}), 401
+    
+    # Get request data
+    data = request.get_json() or {}
+    channel_id = data.get("channel_id")
+    book_title = data.get("book_title")
+    member_ids = data.get("member_ids", [])
+    
+    if not channel_id or not book_title:
+        return jsonify({"message": "channel_id and book_title are required"}), 400
+    
+    user_id_str = str(user_id)
+    
+    # Ensure creator is in members list
+    if user_id_str not in member_ids:
+        member_ids.append(user_id_str)
+    
+    try:
+        client = get_stream_client()
+        
+        # Create the channel (don't set created_by_id, let create() handle it)
+        channel = client.channel(
+            "messaging",
+            channel_id,
+            {
+                "name": f"📚 {book_title}",
+                "book_title": book_title,
+                "members": member_ids,
+            }
+        )
+        
+        # Create the channel on Stream servers
+        channel.create(user_id_str)
+        
+        return jsonify({
+            "message": "Channel created successfully",
+            "channel_id": channel_id,
+            "book_title": book_title
+        }), 201
+        
+    except Exception as e:
+        return jsonify({"message": f"Error creating channel: {str(e)}"}), 500
+
+
+@api.route("/chat/join-channel/<channel_id>", methods=["POST"])
+def join_channel(channel_id):
+    """
+    Join an existing book discussion channel.
+    """
+    # Verify authentication
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return jsonify({"message": "Missing or invalid Authorization header"}), 401
+    
+    token = auth_header.split(" ")[1]
+    user_id = verify_token(token)
+    
+    if not user_id:
+        return jsonify({"message": "Invalid or expired token"}), 401
+    
+    try:
+        client = get_stream_client()
+        
+        # Get the channel and add the user as a member
+        channel = client.channel("messaging", channel_id)
+        channel.add_members([str(user_id)])
+        
+        return jsonify({
+            "message": "Successfully joined channel",
+            "channel_id": channel_id
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"message": f"Error joining channel: {str(e)}"}), 500
+
+
+@api.route("/chat/public-channels", methods=["GET"])
+def get_public_channels():
+    """
+    Get all public book discussion channels.
+    Returns channels with IDs starting with 'book-'
+    """
+    # Verify authentication
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return jsonify({"message": "Missing or invalid Authorization header"}), 401
+    
+    token = auth_header.split(" ")[1]
+    user_id = verify_token(token)
+    
+    if not user_id:
+        return jsonify({"message": "Invalid or expired token"}), 401
+    
+    try:
+        client = get_stream_client()
+        
+        # Query all messaging channels (server-side has full access)
+        # We'll filter book channels by ID prefix
+        channels = client.query_channels(
+            filter_conditions={
+                "type": "messaging",
+            },
+            sort=[{"last_message_at": -1}],
+            limit=100
+        )
+        
+        # Format channel data for response, filtering only book channels
+        channel_list = []
+        for ch in channels.get("channels", []):
+            channel_data = ch.get("channel", {})
+            channel_id = channel_data.get("id", "")
+            
+            # Only include channels that start with "book-"
+            if channel_id.startswith("book-"):
+                channel_list.append({
+                    "id": channel_id,
+                    "name": channel_data.get("name"),
+                    "book_title": channel_data.get("book_title"),
+                    "member_count": channel_data.get("member_count", 0),
+                    "created_at": channel_data.get("created_at"),
+                    "last_message_at": channel_data.get("last_message_at"),
+                    "created_by_id": channel_data.get("created_by_id"),
+                })
+        
+        return jsonify({
+            "channels": channel_list,
+            "count": len(channel_list)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"message": f"Error fetching channels: {str(e)}"}), 500
+
+
+@api.route("/chat/create-or-join-channel", methods=["POST"])
+def create_or_join_channel():
+    """
+    Create a new book channel or join if it already exists.
+    Uses consistent channel ID based on book title.
+    """
+    # Verify authentication
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return jsonify({"message": "Missing or invalid Authorization header"}), 401
+    
+    token = auth_header.split(" ")[1]
+    user_id = verify_token(token)
+    
+    if not user_id:
+        return jsonify({"message": "Invalid or expired token"}), 401
+    
+    # Get request data
+    data = request.get_json() or {}
+    book_title = data.get("book_title")
+    
+    if not book_title:
+        return jsonify({"message": "book_title is required"}), 400
+    
+    # Generate consistent channel ID from book title
+    import re
+    import unicodedata
+    
+    # Normalize and clean the title
+    normalized = unicodedata.normalize("NFD", book_title.lower())
+    cleaned = re.sub(r"[\u0300-\u036f]", "", normalized)  # Remove accents
+    cleaned = re.sub(r"[^a-z0-9\s-]", "", cleaned)  # Remove special chars
+    cleaned = re.sub(r"\s+", "-", cleaned)  # Replace spaces with hyphens
+    cleaned = re.sub(r"-+", "-", cleaned)  # Replace multiple hyphens
+    channel_id = f"book-{cleaned.strip('-')}"
+    
+    user_id_str = str(user_id)
+    
+    try:
+        client = get_stream_client()
+        
+        # Create or get the channel
+        # Note: Don't set created_by_id in data, pass user_id to create() instead
+        channel = client.channel(
+            "messaging",
+            channel_id,
+            {
+                "name": f"📚 {book_title}",
+                "book_title": book_title,
+                "members": [user_id_str],
+            }
+        )
+        
+        # Create the channel (or get if exists) - this sets created_by automatically
+        channel.create(user_id_str)
+        
+        # Add user as member (in case channel already existed)
+        try:
+            channel.add_members([user_id_str])
+        except Exception:
+            # User might already be a member
+            pass
+        
+        return jsonify({
+            "message": "Successfully joined channel",
+            "channel_id": channel_id,
+            "book_title": book_title,
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"message": f"Error creating/joining channel: {str(e)}"}), 500

@@ -4,7 +4,7 @@ import { StreamChat } from "stream-chat";
 const STREAM_API_KEY = import.meta.env.VITE_STREAM_API_KEY;
 
 // Backend URL for API calls
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "";
+const BACKEND_URL = `${import.meta.env.VITE_BACKEND_URL}/api`;
 
 // Singleton client instance
 let clientInstance = null;
@@ -14,6 +14,7 @@ let clientInstance = null;
  * @returns {StreamChat} The Stream Chat client
  */
 export const getStreamClient = () => {
+  console.log("STREAM_API_KEY:", STREAM_API_KEY); // Debug log to verify API key presence
   if (!clientInstance && STREAM_API_KEY) {
     clientInstance = StreamChat.getInstance(STREAM_API_KEY);
   }
@@ -45,27 +46,34 @@ export const generateBookChannelId = (bookTitle) => {
  * @param {string} userImage - Optional user avatar URL
  * @returns {Promise<Object>} The connected user object
  */
-export const connectUser = async (userId, userName, streamToken, userImage = null) => {
+export const connectUser = async (
+  userId,
+  userName,
+  streamToken,
+  userImage = null,
+) => {
   const client = getStreamClient();
-  
+
   if (!client) {
-    throw new Error("Stream Chat client not initialized. Check VITE_STREAM_API_KEY.");
+    throw new Error(
+      "Stream Chat client not initialized. Check VITE_STREAM_API_KEY.",
+    );
   }
-  
+
   // Disconnect any existing user first
   if (client.userID) {
     await client.disconnectUser();
   }
-  
+
   const userConfig = {
     id: userId,
     name: userName,
   };
-  
+
   if (userImage) {
     userConfig.image = userImage;
   }
-  
+
   return await client.connectUser(userConfig, streamToken);
 };
 
@@ -102,7 +110,7 @@ export const createOrJoinBookChannel = async (bookTitle) => {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${accessToken}`,
+      Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify({ book_title: bookTitle }),
   });
@@ -126,19 +134,23 @@ export const createOrJoinBookChannel = async (bookTitle) => {
  * Legacy function for backward compatibility
  * @deprecated Use createOrJoinBookChannel instead
  */
-export const createBookChannel = async (channelId, bookTitle, memberIds = []) => {
+export const createBookChannel = async (
+  channelId,
+  bookTitle,
+  memberIds = [],
+) => {
   const client = getStreamClient();
-  
+
   if (!client || !client.userID) {
     throw new Error("User must be connected before creating a channel");
   }
-  
+
   const channel = client.channel("messaging", channelId, {
     name: `📚 ${bookTitle}`,
     book_title: bookTitle,
     members: memberIds,
   });
-  
+
   await channel.watch();
   return channel;
 };
@@ -150,11 +162,11 @@ export const createBookChannel = async (channelId, bookTitle, memberIds = []) =>
  */
 export const getChannel = async (channelId) => {
   const client = getStreamClient();
-  
+
   if (!client || !client.userID) {
     throw new Error("User must be connected before accessing a channel");
   }
-  
+
   const channel = client.channel("messaging", channelId);
   await channel.watch();
   return channel;
@@ -166,22 +178,22 @@ export const getChannel = async (channelId) => {
  */
 export const getUserChannels = async () => {
   const client = getStreamClient();
-  
+
   if (!client || !client.userID) {
     throw new Error("User must be connected before fetching channels");
   }
-  
-  const filter = { 
-    type: "messaging", 
-    members: { $in: [client.userID] } 
+
+  const filter = {
+    type: "messaging",
+    members: { $in: [client.userID] },
   };
   const sort = [{ last_message_at: -1 }];
-  
+
   const channels = await client.queryChannels(filter, sort, {
     watch: true,
     state: true,
   });
-  
+
   return channels;
 };
 
@@ -206,7 +218,7 @@ export const getAllBookChannels = async () => {
   const response = await fetch(`${BACKEND_URL}/chat/public-channels`, {
     method: "GET",
     headers: {
-      "Authorization": `Bearer ${accessToken}`,
+      Authorization: `Bearer ${accessToken}`,
     },
   });
 
@@ -219,7 +231,7 @@ export const getAllBookChannels = async () => {
 
   // Convert backend response to channel-like objects for compatibility
   // The backend returns simplified channel data, we need to format it
-  return data.channels.map(ch => ({
+  return data.channels.map((ch) => ({
     id: ch.id,
     data: {
       name: ch.name,
@@ -251,13 +263,16 @@ export const joinBookChannel = async (channelId) => {
   }
 
   // Use backend API to join channel (server has proper permissions)
-  const response = await fetch(`${BACKEND_URL}/chat/join-channel/${channelId}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${accessToken}`,
+  const response = await fetch(
+    `${BACKEND_URL}/chat/join-channel/${channelId}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
     },
-  });
+  );
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
@@ -371,7 +386,8 @@ export const isChannelCreator = (channel) => {
   const client = getStreamClient();
   if (!client || !client.userID || !channel) return false;
 
-  const createdById = channel.data?.created_by_id || channel.data?.created_by?.id;
+  const createdById =
+    channel.data?.created_by_id || channel.data?.created_by?.id;
   return createdById === client.userID;
 };
 

@@ -46,8 +46,10 @@ class User(db.Model):
 
     def serialize(self):
         return {
-            "id": self.id,
+            "id": str(self.id),
             "email": self.email,
+            "username": self.username,
+            "is_active": self.is_active,
             # do not serialize the password, its a security breach
         }
     
