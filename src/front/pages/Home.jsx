@@ -5,14 +5,17 @@ import './Home.css';
 import portadaLibro from "../assets/img/portada_Libro.png";
 import useGlobalReducer from '../hooks/useGlobalReducer';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from '../components/UserContext';
 
 export const Home = () => {
   const { store, dispatch } = useGlobalReducer();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [eventList, setEventList] = useState(store.initialEventList);
   const navigate = useNavigate();
+  const { updateProfile, updateProfileImg } = useUser()
 
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:3001";
+
+  const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
   // Librería + libro seleccionado
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
@@ -27,9 +30,13 @@ export const Home = () => {
     try {
       const saved = localStorage.getItem("selected_book");
       if (saved) setSelectedBook(JSON.parse(saved));
+
+      updateProfile(JSON.parse(localStorage.getItem("user_data")))
+
     } catch (e) {
       localStorage.removeItem("selected_book");
     }
+
   }, []);
 
   const handleAddEvent = (newEvent) => {
@@ -44,8 +51,12 @@ export const Home = () => {
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_data');
     localStorage.removeItem('stream_token');
-    // opcional: limpiar libro
-    // localStorage.removeItem("selected_book");
+    localStorage.removeItem("selected_book");
+    localStorage.removeItem("token");
+    localStorage.removeItem("selectedBook");
+    localStorage.removeItem("userAvatar");
+
+
     navigate('/');
   };
 

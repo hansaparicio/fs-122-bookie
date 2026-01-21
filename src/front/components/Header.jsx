@@ -1,12 +1,14 @@
-import React from "react";
+import { useUser } from "./UserContext";
 import { Link } from "react-router-dom";
 import logo from "../assets/img/Logo.png";
 import { HomeIcon, BellIcon } from '@heroicons/react/24/outline';
 
 export const Header = () => {
+    const { profileImg } = useUser()
 
-    const userData = localStorage.getItem("user_data");
-    const { username } = JSON.parse(userData);
+    const { username } = JSON.parse(localStorage.getItem("user_data"))
+
+
     return (
         <header className="top-header">
             <div className="header-logo-section">
@@ -27,29 +29,18 @@ export const Header = () => {
                 <div className="user-profile-section">
                     <span className="user-name">{username || "User"}</span>
                     <div className="profile-circle">
-                        {/*
-                            Avatar tipo círculo con letra y color random
-                        */}
-                        <div
+                        {/* Muestra la foto de perfil de Cloudinary */}
+                        <img
+                            src={profileImg}
+                            alt="profile"
                             style={{
-                                backgroundColor: `hsl(${Math.floor(
-                                    (username?.charCodeAt(0) || 65) * 16 % 360
-                                )}, 70%, 55%)`,
-                                color: "#fff",
                                 width: 40,
                                 height: 40,
                                 borderRadius: "50%",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                fontWeight: "bold",
-                                fontSize: 20,
-                                userSelect: "none",
-                                textTransform: "uppercase"
+                                objectFit: "cover",
+                                border: "2px solid #fff"
                             }}
-                        >
-                            {username?.[0] || "U"}
-                        </div>
+                        />
                     </div>
                 </div>
             </div>

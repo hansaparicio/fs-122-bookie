@@ -73,7 +73,7 @@ export const Login = () => {
 				position: "right", // `left`, `center` or `right`
 				stopOnFocus: true, // Prevents dismissing of toast on hover
 				style: {
-					background: "linear-gradient(to right,rgb(245, 247, 127),rgb(255, 111, 111))",
+					background: "rgb(132, 84, 200)",
 				},
 				onClick: function () { } // Callback after click
 			}).showToast();
