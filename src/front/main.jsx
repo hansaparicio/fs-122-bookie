@@ -8,7 +8,7 @@ import { router } from "./routes";
 import { StoreProvider } from './hooks/useGlobalReducer';
 import { BackendURL } from './components/BackendURL.jsx';
 import { BookProvider } from './components/BookContext.jsx';
-//import { ChatProvider } from './components/ChatContext.jsx';
+import { UserProvider } from './components/UserContext.jsx';
 
 const Main = () => {
 
@@ -21,7 +21,9 @@ const Main = () => {
         <React.StrictMode>
             <StoreProvider>
                 <BookProvider>
-                    <RouterProvider router={router} />
+                    <UserProvider> {/* ← AGREGADO AQUÍ */}
+                        <RouterProvider router={router} />
+                    </UserProvider> {/* ← AGREGADO AQUÍ */}
                 </BookProvider>
             </StoreProvider>
         </React.StrictMode>
