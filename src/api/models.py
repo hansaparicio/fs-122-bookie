@@ -12,6 +12,13 @@ user_event = db.Table(
     db.Column('event_id', db.Integer, db.ForeignKey('event.id'), primary_key=True)
 )
 
+user_library = db.Table(
+    "user_library",
+    db.Column("user_id", db.Integer, db.ForeignKey("user.id"), primary_key=True),
+    db.Column("book_isbn", db.String(20), db.ForeignKey("book.isbn"), primary_key=True),
+)
+
+#---- USER MODEL ----#
 class User(db.Model):
     __tablename__ = "user"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -37,7 +44,18 @@ class User(db.Model):
         secondary=user_event,
         back_populates="users"
     )
-    
+
+    library_books = db.relationship(
+        "Book",
+        secondary=user_library,
+        lazy= "select",
+        backref=db.backref("owners", lazy="select")
+    )
+
+    def normalize_isbn(isbn: str) -> str:
+        return isbn.replace("-", "").replace(" ", "").upper()
+
+
     def set_password(self, password):
         self.password = generate_password_hash(password)
 
@@ -50,9 +68,9 @@ class User(db.Model):
             "email": self.email,
             "username": self.username,
             "is_active": self.is_active,
-            # do not serialize the password, its a security breach
         }
-    
+
+#---- EVENT MODEL ----#  
     
 class Event(db.Model):
     __tablename__ = "event"
@@ -78,4 +96,23 @@ class Event(db.Model):
             "time": self.time.strftime("%H:%M"),
             "category": self.category,
             "location": self.location
+        }
+    
+#---- BOOK MODEL ----#
+class Book(db.Model):
+    __tablename__ = "book"
+
+    isbn =db.Column(db.String(20), primary_key=True)
+    title = db.Column(db.String(255), nullable=False)
+    author = db.Column(db.String(500))
+    publisher = db.Column(db.String(50))
+    thumbnail = db.Column(db.String(500))
+
+    def serialize(self):
+        return {
+            "isbn": self.isbn,
+            "title": self.title,
+            "authors": self.author.split(";") if self.author else [],
+            "publisher": self.publisher,
+            "thumbnail": self.thumbnail
         }

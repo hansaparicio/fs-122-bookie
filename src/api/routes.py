@@ -14,8 +14,14 @@ from flask import current_app
 from flask import request, jsonify
 from api.utils_scripts.auth_utils import create_refresh_token, verify_token, create_token
 import requests
+from api.models import db, User, Book
+
 
 api = Blueprint('api', __name__)
+
+def normalize_isbn(isbn: str) -> str:
+    return (isbn or "").replace("-", "").replace(" ", "").upper()
+
 
 def generate_stream_token(user):
     """Generate a Stream Chat token for a user"""
@@ -26,26 +32,23 @@ def generate_stream_token(user):
         
         user_id = str(user.id)
         
-        # Try to restore the user if they were deleted, then upsert
         try:
-            # First, try to restore the user if they were soft-deleted
             client.restore_users([user_id])
         except Exception:
-            # User wasn't deleted, that's fine
             pass
         
-        # Create/update user in Stream
         client.upsert_user({
             "id": user_id,
             "name": user.username,
             "email": user.email,
         })
         
-        # Generate and return token
         return client.create_token(user_id)
     except Exception as e:
         print(f"Error generating Stream token: {e}")
         return None
+
+#----RUTAS DE REGISTRO----#
 
 @api.route("/signup", methods=["POST"])
 def signup():
@@ -70,6 +73,8 @@ def signup():
     db.session.commit()
 
     return jsonify(user.serialize()), 201
+
+#----RUTAS DE AUTENTICACION----#
 
 @api.route("/login", methods=["POST"])
 def login():
@@ -105,6 +110,7 @@ def login():
 
     return response
 
+#----RUTAS DE USUARIOS----#
 
 @api.route('/users', methods=['GET'])
 def get_users():
@@ -140,7 +146,6 @@ def books_search():
             "error": str(e)
         }), 502
 
-    # Si Google responde pero no 200
     if r.status_code != 200:
         return jsonify({
             "message": "Google Books returned non-200",
@@ -179,7 +184,7 @@ def books_search():
 
     return jsonify({"totalItems": data.get("totalItems", 0), "items": normalized}), 200
 
-#routes for user events
+#----RUTAS DE EVENTOS----#
 
 @api.route("/users/<int:user_id>/events", methods=["GET"])
 def get_user_events(user_id):
@@ -280,7 +285,7 @@ def get_event_users(event_id):
     return jsonify([user.serialize() for user in users]), 200
 
 
-## --------------- CHAT INTEGRATION --------------- ##
+#----RUTAS DE STREAM CHAT----#
 
 def get_stream_client():
     """Initialize Stream Chat client with API credentials"""
@@ -299,7 +304,7 @@ def get_stream_token():
     Generate a Stream Chat token for the authenticated user.
     Requires a valid JWT access token in the Authorization header.
     """
-    # Get and verify the JWT token
+    
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         return jsonify({"message": "Missing or invalid Authorization header"}), 401
@@ -316,17 +321,12 @@ def get_stream_token():
         return jsonify({"message": "User not found"}), 404
     
     try:
-        # Initialize Stream client and generate token
         client = get_stream_client()
-        
-        # Create/update user in Stream
         client.upsert_user({
             "id": str(user.id),
             "name": user.username,
             "email": user.email,
         })
-        
-        # Generate token for the user
         stream_token = client.create_token(str(user.id))
         
         return jsonify({
@@ -347,7 +347,6 @@ def create_channel():
     Create a new chat channel for a book discussion.
     Requires: channel_id, book_title, member_ids (list of user IDs)
     """
-    # Verify authentication
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         return jsonify({"message": "Missing or invalid Authorization header"}), 401
@@ -357,8 +356,6 @@ def create_channel():
     
     if not user_id:
         return jsonify({"message": "Invalid or expired token"}), 401
-    
-    # Get request data
     data = request.get_json() or {}
     channel_id = data.get("channel_id")
     book_title = data.get("book_title")
@@ -369,14 +366,12 @@ def create_channel():
     
     user_id_str = str(user_id)
     
-    # Ensure creator is in members list
     if user_id_str not in member_ids:
         member_ids.append(user_id_str)
     
     try:
         client = get_stream_client()
         
-        # Create the channel (don't set created_by_id, let create() handle it)
         channel = client.channel(
             "messaging",
             channel_id,
@@ -386,8 +381,7 @@ def create_channel():
                 "members": member_ids,
             }
         )
-        
-        # Create the channel on Stream servers
+
         channel.create(user_id_str)
         
         return jsonify({
@@ -405,7 +399,6 @@ def join_channel(channel_id):
     """
     Join an existing book discussion channel.
     """
-    # Verify authentication
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         return jsonify({"message": "Missing or invalid Authorization header"}), 401
@@ -418,8 +411,6 @@ def join_channel(channel_id):
     
     try:
         client = get_stream_client()
-        
-        # Get the channel and add the user as a member
         channel = client.channel("messaging", channel_id)
         channel.add_members([str(user_id)])
         
@@ -438,7 +429,7 @@ def get_public_channels():
     Get all public book discussion channels.
     Returns channels with IDs starting with 'book-'
     """
-    # Verify authentication
+
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         return jsonify({"message": "Missing or invalid Authorization header"}), 401
@@ -452,8 +443,6 @@ def get_public_channels():
     try:
         client = get_stream_client()
         
-        # Query all messaging channels (server-side has full access)
-        # We'll filter book channels by ID prefix
         channels = client.query_channels(
             filter_conditions={
                 "type": "messaging",
@@ -462,13 +451,11 @@ def get_public_channels():
             limit=100
         )
         
-        # Format channel data for response, filtering only book channels
         channel_list = []
         for ch in channels.get("channels", []):
             channel_data = ch.get("channel", {})
             channel_id = channel_data.get("id", "")
             
-            # Only include channels that start with "book-"
             if channel_id.startswith("book-"):
                 channel_list.append({
                     "id": channel_id,
@@ -495,7 +482,7 @@ def create_or_join_channel():
     Create a new book channel or join if it already exists.
     Uses consistent channel ID based on book title.
     """
-    # Verify authentication
+
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         return jsonify({"message": "Missing or invalid Authorization header"}), 401
@@ -506,23 +493,21 @@ def create_or_join_channel():
     if not user_id:
         return jsonify({"message": "Invalid or expired token"}), 401
     
-    # Get request data
+
     data = request.get_json() or {}
     book_title = data.get("book_title")
     
     if not book_title:
         return jsonify({"message": "book_title is required"}), 400
     
-    # Generate consistent channel ID from book title
     import re
     import unicodedata
     
-    # Normalize and clean the title
     normalized = unicodedata.normalize("NFD", book_title.lower())
-    cleaned = re.sub(r"[\u0300-\u036f]", "", normalized)  # Remove accents
-    cleaned = re.sub(r"[^a-z0-9\s-]", "", cleaned)  # Remove special chars
-    cleaned = re.sub(r"\s+", "-", cleaned)  # Replace spaces with hyphens
-    cleaned = re.sub(r"-+", "-", cleaned)  # Replace multiple hyphens
+    cleaned = re.sub(r"[\u0300-\u036f]", "", normalized) 
+    cleaned = re.sub(r"[^a-z0-9\s-]", "", cleaned)  
+    cleaned = re.sub(r"\s+", "-", cleaned)  
+    cleaned = re.sub(r"-+", "-", cleaned)  
     channel_id = f"book-{cleaned.strip('-')}"
     
     user_id_str = str(user_id)
@@ -530,8 +515,6 @@ def create_or_join_channel():
     try:
         client = get_stream_client()
         
-        # Create or get the channel
-        # Note: Don't set created_by_id in data, pass user_id to create() instead
         channel = client.channel(
             "messaging",
             channel_id,
@@ -542,14 +525,11 @@ def create_or_join_channel():
             }
         )
         
-        # Create the channel (or get if exists) - this sets created_by automatically
         channel.create(user_id_str)
         
-        # Add user as member (in case channel already existed)
         try:
             channel.add_members([user_id_str])
         except Exception:
-            # User might already be a member
             pass
         
         return jsonify({
@@ -560,3 +540,71 @@ def create_or_join_channel():
         
     except Exception as e:
         return jsonify({"message": f"Error creating/joining channel: {str(e)}"}), 500
+    
+    #---RUTAS BIBLOTECA DE LIBROS---#
+
+@api.route("/library/<int:user_id>/books", methods=["GET"])
+def get_user_library(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    return jsonify([book.serialize() for book in user.library_books]), 200
+
+@api.route("/library/<int:user_id>/books", methods=["POST"])
+def add_book_to_library(user_id):
+    data = request.get_json() or {}
+
+    isbn = normalize_isbn(data.get("isbn", ""))
+    title = data.get("title")
+    authors = data.get("authors") or []
+    published_date = data.get("published_date")
+    thumbnail = data.get("thumbnail")
+
+    if not isbn or not title:
+        return jsonify({"msg": "Missing isbn or title"}), 400
+    
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+    
+    if isinstance(authors, str):
+        authors = [authors]
+
+        book = Book.query.get(isbn)
+
+    if not book:
+        book = Book(
+            isbn=isbn,
+            title=title,
+            author="; ".join(authors),
+            published_date=published_date,
+            thumbnail=thumbnail
+        )
+        db.session.add(book)
+
+        if any(b.isbn == isbn for b in user.library_books):
+            return jsonify({"msg": "Book already in library"}), 409
+        
+    user.library_books.append(book)
+    db.session.commit()
+
+    return jsonify({"msg": "Book added to library", "book": book.serialize()}), 201
+
+@api.route("/library/<int:user_id>/books/<isbn>", methods=["DELETE"])
+def remove_book_from_library(user_id, isbn):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+    
+    isbn = normalize_isbn(isbn)
+
+    book = next((b for b in user.library_books if b.isbn == isbn), None)
+    if not book:
+        return jsonify({"msg": "Book not found in library"}), 404
+    
+    user.library_books.remove(book)
+    db.session.commit()
+    return jsonify({"msg": "Book removed from library"}), 200
+
+
