@@ -6,8 +6,9 @@ import { HomeIcon, BellIcon } from '@heroicons/react/24/outline';
 export const Header = () => {
     const { profileImg } = useUser()
 
-    const { username } = JSON.parse(localStorage.getItem("user_data"))
-
+    const savedUser = localStorage.getItem("user_data");
+    const userData = savedUser ? JSON.parse(savedUser) : null;
+    const username = userData?.username || "Guest";
 
     return (
         <header className="top-header">
