@@ -104,7 +104,7 @@ def login():
         "refresh_token": refresh_token,
         "user": user.serialize(),
     }
-    # Solo incluir stream_token si se generó correctamente
+    
     if stream_token:
         response_data["stream_token"] = stream_token
     
