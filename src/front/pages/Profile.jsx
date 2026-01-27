@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import "./Profile.css";
 import { PencilIcon, BookOpenIcon, TagIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useUser } from "../components/UserContext";
-import BookLibraryModal from "../components/BookLibraryModal";
+import MyLibraryPickerModal from "../components/MyLibraryPickerModal";
 
 export const Profile = () => {
   const { profileImg, updateProfileImg, userData } = useUser();
@@ -12,6 +12,7 @@ export const Profile = () => {
   const [libraryBooks, setLibraryBooks] = useState([]);
   const [loadingLibrary, setLoadingLibrary] = useState(false);
   const [deletingIsbn, setDeletingIsbn] = useState(null);
+
   const [readingNow, setReadingNow] = useState(null);
 
   const [aboutText, setAboutText] = useState("");
@@ -21,8 +22,16 @@ export const Profile = () => {
   const [newGenre, setNewGenre] = useState("");
 
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
+  const [pickerMode, setPickerMode] = useState("top3");
 
   const normalizeIsbn = (isbn) => (isbn || "").replaceAll("-", "").replaceAll(" ", "").toUpperCase();
+
+  const getAuthorsArray = (book) => {
+    if (!book) return [];
+    if (Array.isArray(book.authors)) return book.authors;
+    if (book.author) return String(book.author).split(";").map((s) => s.trim()).filter(Boolean);
+    return [];
+  };
 
   const getUserId = () => {
     const fromCtx = userData?.id;
@@ -70,15 +79,23 @@ export const Profile = () => {
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       if (!parsed) return null;
-      return {
-        title: parsed.title,
-        thumbnail: parsed.thumbnail,
-        isbn: normalizeIsbn(parsed.isbn),
-        authors: parsed.authors || [],
-      };
+      return normalizeIsbn(parsed.isbn);
     } catch {
       return null;
     }
+  };
+
+  const setCurrentlyReading = (book) => {
+    const isbn = normalizeIsbn(book?.isbn);
+    if (!isbn) return;
+    setReadingNow(isbn);
+    const payload = {
+      title: book.title,
+      thumbnail: book.thumbnail,
+      isbn,
+      authors: getAuthorsArray(book),
+    };
+    localStorage.setItem("selected_book", JSON.stringify(payload));
   };
 
   const fetchLibrary = async () => {
@@ -94,8 +111,7 @@ export const Profile = () => {
       }
       const data = await resp.json();
       setLibraryBooks(Array.isArray(data) ? data : []);
-    } catch (e) {
-      console.error("Error cargando biblioteca:", e);
+    } catch {
       setLibraryBooks([]);
     } finally {
       setLoadingLibrary(false);
@@ -111,28 +127,34 @@ export const Profile = () => {
 
     try {
       const resp = await fetch(`${API_BASE}/api/library/${userId}/books/${clean}`, { method: "DELETE" });
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        throw new Error(err?.msg || err?.message || "Error deleting book");
-      }
+      if (!resp.ok) throw new Error();
+
       setLibraryBooks((prev) => prev.filter((b) => normalizeIsbn(b.isbn) !== clean));
-      if (normalizeIsbn(readingNow?.isbn) === clean) setReadingNow(null);
-    } catch (e) {
-      console.error("Error borrando libro:", e);
-      alert("No se pudo borrar el libro.");
+
+      if (readingNow === clean) {
+        setReadingNow(null);
+        localStorage.removeItem("selected_book");
+      }
+
+      setTop3((prev) => {
+        const next = prev.map((slot) =>
+          slot && normalizeIsbn(slot.isbn) === clean ? null : slot
+        );
+        savePrefs({ aboutText, top3: next, favoriteGenres });
+        return next;
+      });
     } finally {
       setDeletingIsbn(null);
     }
   };
 
-
   const pickTop3Book = (item) => {
     if (activeSlot === null) return;
 
     const mapped = {
-      id: item.id,
+      id: item.id || null,
       title: item.title,
-      authors: Array.isArray(item.authors) ? item.authors : [],
+      authors: getAuthorsArray(item),
       publisher: item.publisher || null,
       thumbnail: item.thumbnail || null,
       isbn: normalizeIsbn(item.isbn),
@@ -150,9 +172,12 @@ export const Profile = () => {
   };
 
   const handleBookSelect = (book) => {
-    if (activeSlot !== null) {
-      pickTop3Book(book);
+    if (pickerMode === "reading") {
+      setCurrentlyReading(book);
+      setIsBookModalOpen(false);
+      return;
     }
+    if (activeSlot !== null) pickTop3Book(book);
   };
 
   const clearTop3Slot = (idx) => {
@@ -172,16 +197,11 @@ export const Profile = () => {
   const addGenre = () => {
     const genre = newGenre.trim();
     if (!genre) return;
-    
-    // Normalizar: primera letra mayúscula, resto minúsculas
     const normalizedGenre = genre.charAt(0).toUpperCase() + genre.slice(1).toLowerCase();
-    
-    // Verificar que no exista ya
     if (favoriteGenres.includes(normalizedGenre)) {
       setNewGenre("");
       return;
     }
-
     const updated = [...favoriteGenres, normalizedGenre];
     setFavoriteGenres(updated);
     saveGenres(updated);
@@ -196,7 +216,6 @@ export const Profile = () => {
     savePrefs({ aboutText, top3, favoriteGenres: updated });
   };
 
-  // Lista de géneros comunes para sugerir
   const commonGenres = [
     "Fantasy", "Sci-Fi", "Thriller", "Romance", "Mystery", "Horror",
     "Historical Fiction", "Biography", "Non-Fiction", "Adventure",
@@ -219,15 +238,20 @@ export const Profile = () => {
     if (Array.isArray(prefs?.favoriteGenres)) {
       setFavoriteGenres(prefs.favoriteGenres);
     } else {
-      // Valores por defecto si no hay géneros guardados
       const defaultGenres = ["Fantasy", "Sci-Fi", "Thriller"];
       setFavoriteGenres(defaultGenres);
       saveGenres(defaultGenres);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userData?.id]);
 
-  const current = readingNow || libraryBooks?.[0] || null;
+  const current = useMemo(() => {
+    if (!libraryBooks.length) return null;
+    if (readingNow) {
+      const found = libraryBooks.find((b) => normalizeIsbn(b.isbn) === readingNow);
+      if (found) return found;
+    }
+    return libraryBooks[0];
+  }, [libraryBooks, readingNow]);
 
   const user = {
     name:
@@ -250,8 +274,9 @@ export const Profile = () => {
         resourceType: "image",
       },
       (error, result) => {
-        if (error) console.error("❌ Error:", error);
-        if (result && result.event === "success") updateProfileImg(result.info.secure_url);
+        if (!error && result?.event === "success") {
+          updateProfileImg(result.info.secure_url);
+        }
       }
     );
     widget.open();
@@ -264,96 +289,29 @@ export const Profile = () => {
         <div className="d-flex gap-3 align-items-start">
           {b ? (
             <>
-              <img
-                src={b.thumbnail || "https://via.placeholder.com/80x110"}
-                alt={b.title}
-                style={{ width: 70, height: 95, objectFit: "cover", borderRadius: 10 }}
-              />
-              <div className="flex-grow-1" style={{ minWidth: 0 }}>
-                <div className="fw-bold" style={{ color: "#231B59", fontSize: 11, marginBottom: 4 }}>
-                  Top {idx + 1}
-                </div>
-                <div
-                  className="fw-bold"
-                  style={{
-                    fontSize: 14,
-                    color: "#231B59",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    marginBottom: 4,
-                  }}
-                  title={b.title}
-                >
-                  {b.title}
-                </div>
-                <div
-                  className="text-muted"
-                  style={{
-                    fontSize: 12,
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    marginBottom: 2,
-                  }}
-                  title={(b.authors || []).join(", ")}
-                >
-                  {(b.authors || []).join(", ") || "Autor desconocido"}
-                </div>
-                {b.isbn && (
-                  <div className="text-muted" style={{ fontSize: 10 }}>
-                    ISBN: {b.isbn}
-                  </div>
-                )}
+              <img src={b.thumbnail || "https://via.placeholder.com/80x110"} alt={b.title} style={{ width: 70, height: 95, objectFit: "cover", borderRadius: 10 }} />
+              <div className="flex-grow-1">
+                <div className="fw-bold" style={{ color: "#231B59", fontSize: 11 }}>Top {idx + 1}</div>
+                <div className="fw-bold" style={{ fontSize: 14, color: "#231B59" }}>{b.title}</div>
+                <div className="text-muted" style={{ fontSize: 12 }}>{b.authors.join(", ")}</div>
               </div>
             </>
           ) : (
             <>
-              <div
-                style={{
-                  width: 70,
-                  height: 95,
-                  backgroundColor: "#f0f0f0",
-                  borderRadius: 10,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#999",
-                  fontSize: 24,
-                }}
-              >
-                📚
-              </div>
-              <div className="flex-grow-1" style={{ minWidth: 0 }}>
-                <div className="fw-bold" style={{ color: "#231B59" }}>
-                  Top {idx + 1}
-                </div>
-                <div className="text-muted" style={{ fontSize: 13 }}>
-                  Pick a book
-                </div>
+              <div style={{ width: 70, height: 95, backgroundColor: "#f0f0f0", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center" }}>📚</div>
+              <div className="flex-grow-1">
+                <div className="fw-bold">Top {idx + 1}</div>
+                <div className="text-muted">Pick a book</div>
               </div>
             </>
           )}
-
           <div className="d-flex flex-column gap-2">
-            <button
-              className="btn btn-sm"
-              style={{ minWidth: 80 }}
-              onClick={() => {
-                setActiveSlot(idx);
-                setIsBookModalOpen(true);
-              }}
-            >
+            <button className="btn btn-sm" onClick={() => { setPickerMode("top3"); setActiveSlot(idx); setIsBookModalOpen(true); }}>
               {b ? "Change" : "Add"}
             </button>
             {b && (
-              <button
-                className="btn btn-sm btn-outline-danger"
-                onClick={() => clearTop3Slot(idx)}
-                style={{ minWidth: 80 }}
-              >
-                <TrashIcon style={{ width: 14, marginRight: 4 }} />
-                Remove
+              <button className="btn btn-sm btn-outline-danger" onClick={() => clearTop3Slot(idx)}>
+                <TrashIcon style={{ width: 14 }} /> Remove
               </button>
             )}
           </div>
@@ -366,143 +324,25 @@ export const Profile = () => {
     <div className="profile-main-container" style={{ backgroundColor: "#E5E4D7", minHeight: "100vh", display: "flex" }}>
       <div className="profile-content-scroll" style={{ flexGrow: 1, padding: "40px" }}>
         <div className="card border-0 shadow-sm p-4 mb-4" style={{ borderRadius: "28px" }}>
-          <div className="d-flex align-items-center text-start">
-            <img
-              src={profileImg}
-              alt={user.name}
-              className="rounded-circle"
-              style={{ width: "120px", height: "120px", objectFit: "cover", border: "4px solid #11DA3E7" }}
-            />
+          <div className="d-flex align-items-center">
+            <img src={profileImg} alt={user.name} className="rounded-circle" style={{ width: 120, height: 120 }} />
             <div className="ms-4">
-              <h1 className="fw-bold mb-1" style={{ color: "#231B59" }}>
-                {user.name}
-              </h1>
-              <p className="text-muted mb-3">{user.location}</p>
-              <button
-                className="btn-wine rounded-pill px-4 py-2"
-                onClick={openCloudinaryWidget}
-              >
-                <PencilIcon style={{ width: "18px", marginRight: "8px" }} /> Edit Profile
+              <h1 className="fw-bold">{user.name}</h1>
+              <p className="text-muted">{user.location}</p>
+              <button className="btn-wine rounded-pill px-4 py-2" onClick={openCloudinaryWidget}>
+                <PencilIcon style={{ width: 18 }} /> Edit Profile
               </button>
             </div>
           </div>
         </div>
 
-        <div className="row g-4 text-start">
+        <div className="row g-4">
           <div className="col-md-7">
             <div className="card border-0 shadow-sm p-4 h-100" style={{ borderRadius: "28px" }}>
-              <h5 className="fw-bold mb-3" style={{ color: "#231B59" }}>
-                <TagIcon style={{ width: "22px", marginRight: "10px" }} /> About Me
-              </h5>
-
-              <textarea
-                className="form-control"
-                rows={5}
-                value={aboutText}
-                onChange={(e) => onChangeAbout(e.target.value)}
-                placeholder="Write something about you..."
-                style={{ borderRadius: 12 }}
-              />
-
+              <h5 className="fw-bold"><TagIcon style={{ width: 22 }} /> About Me</h5>
+              <textarea className="form-control" rows={5} value={aboutText} onChange={(e) => onChangeAbout(e.target.value)} />
               <div className="mt-4">
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <h6 className="fw-bold small mb-0">Favorite Genres</h6>
-                </div>
-                
-                {/* Géneros actuales */}
-                <div className="d-flex gap-2 flex-wrap mb-3">
-                  {favoriteGenres.length === 0 ? (
-                    <span className="text-muted" style={{ fontSize: 13 }}>No genres added yet</span>
-                  ) : (
-                    favoriteGenres.map((g) => (
-                      <span
-                        key={g}
-                        className="badge rounded-pill p-2 px-3 d-flex align-items-center gap-2"
-                        style={{ backgroundColor: "#11DA3E7", color: "#231B59" }}
-                      >
-                        {g}
-                        <button
-                          type="button"
-                          className="btn-close btn-close-sm"
-                          style={{ fontSize: "10px", opacity: 0.7 }}
-                          onClick={() => removeGenre(g)}
-                          aria-label={`Remove ${g}`}
-                        />
-                      </span>
-                    ))
-                  )}
-                </div>
-
-                {/* Input para añadir géneros */}
-                <div className="d-flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    className="form-control form-control-sm"
-                    placeholder="Add a genre..."
-                    value={newGenre}
-                    onChange={(e) => setNewGenre(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addGenre();
-                      }
-                    }}
-                    style={{ borderRadius: 12, fontSize: 13 }}
-                    list="genre-suggestions"
-                  />
-                  <button
-                    className="btn btn-sm"
-                    style={{ borderRadius: 12, minWidth: 80 }}
-                    onClick={addGenre}
-                    disabled={!newGenre.trim()}
-                  >
-                    Add
-                  </button>
-                </div>
-
-                {/* Sugerencias de géneros comunes */}
-                <datalist id="genre-suggestions">
-                  {commonGenres
-                    .filter((g) => !favoriteGenres.includes(g))
-                    .map((g) => (
-                      <option key={g} value={g} />
-                    ))}
-                </datalist>
-
-                {/* Géneros sugeridos (opcionales) */}
-                {favoriteGenres.length < 5 && (
-                  <div className="mt-2">
-                    <small className="text-muted" style={{ fontSize: 11 }}>
-                      Suggestions:{" "}
-                      {commonGenres
-                        .filter((g) => !favoriteGenres.includes(g))
-                        .slice(0, 5)
-                        .map((g, idx, arr) => (
-                          <React.Fragment key={g}>
-                            <button
-                              type="button"
-                              className="btn-link p-0 border-0 bg-transparent text-decoration-none"
-                              style={{ fontSize: 11, color: "#231B59", cursor: "pointer" }}
-                              onClick={() => {
-                                setNewGenre(g);
-                                setTimeout(() => addGenre(), 0);
-                              }}
-                            >
-                              {g}
-                            </button>
-                            {idx < arr.length - 1 && ", "}
-                          </React.Fragment>
-                        ))}
-                    </small>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-4">
-                <h6 className="fw-bold" style={{ color: "#231B59" }}>
-                  Top 3 Favorite Books
-                </h6>
-
+                <h6 className="fw-bold">Top 3 Favorite Books</h6>
                 <div className="d-flex flex-column gap-3 mt-3">
                   <TopCard idx={0} />
                   <TopCard idx={1} />
@@ -515,68 +355,35 @@ export const Profile = () => {
           <div className="col-md-5">
             <div className="card border-0 shadow-sm p-4 h-100" style={{ borderRadius: "28px" }}>
               <div className="d-flex justify-content-between align-items-center mb-3">
-                <h5 className="fw-bold mb-0" style={{ color: "#231B59" }}>
-                  <BookOpenIcon style={{ width: "22px", marginRight: "10px" }} /> Currently Reading
-                </h5>
-                <button className="btn btn-sm" onClick={fetchLibrary}>
-                  Refresh
+                <h5 className="fw-bold"><BookOpenIcon style={{ width: 22 }} /> Currently Reading</h5>
+                <button className="btn btn-sm" onClick={() => { setPickerMode("reading"); setIsBookModalOpen(true); }}>
+                  Change
                 </button>
               </div>
 
-              {loadingLibrary ? (
-                <p className="text-muted">Loading library...</p>
-              ) : !current ? (
-                <p className="text-muted">Your library is empty. Add books from Home to see them here.</p>
+              {!current ? (
+                <p className="text-muted">Your library is empty.</p>
               ) : (
                 <>
                   <div className="text-center">
-                    <img
-                      src={current.thumbnail || "https://via.placeholder.com/140x180"}
-                      alt={current.title}
-                      className="shadow"
-                      style={{ width: "140px", borderRadius: "8px", margin: "0 auto" }}
-                    />
-                    <p className="fw-bold mt-3 mb-0" style={{ color: "#231B59" }}>
-                      {current.title}
-                    </p>
-                    <p className="text-muted mb-3" style={{ fontSize: "13px" }}>
-                      {(current.authors || []).join(", ")}
-                    </p>
-                    {current.isbn && (
-                      <div className="text-muted" style={{ fontSize: "12px" }}>
-                        ISBN: {normalizeIsbn(current.isbn)}
-                      </div>
-                    )}
+                    <img src={current.thumbnail || "https://via.placeholder.com/140x180"} alt={current.title} style={{ width: 140 }} />
+                    <p className="fw-bold mt-3">{current.title}</p>
+                    <p className="text-muted">{getAuthorsArray(current).join(", ")}</p>
                   </div>
 
                   <hr />
 
-                  <h6 className="fw-bold" style={{ color: "#231B59" }}>
-                    My Library
-                  </h6>
-                  <div className="d-flex flex-column gap-3 mt-2" style={{ maxHeight: "260px", overflowY: "auto" }}>
+                  <h6 className="fw-bold">My Library</h6>
+                  <div className="d-flex flex-column gap-3">
                     {libraryBooks.map((b) => (
                       <div key={b.isbn} className="d-flex gap-3 align-items-start">
-                        <img
-                          src={b.thumbnail || "https://via.placeholder.com/60x90"}
-                          alt={b.title}
-                          style={{ width: "55px", height: "75px", objectFit: "cover", borderRadius: "6px" }}
-                        />
-                        <div className="flex-grow-1" style={{ minWidth: 0 }}>
-                          <div className="fw-bold" style={{ fontSize: "13px", color: "#231B59" }}>
-                            {b.title}
-                          </div>
-                          <div className="text-muted" style={{ fontSize: "12px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                            {(b.authors || []).join(", ")}
-                          </div>
+                        <img src={b.thumbnail || "https://via.placeholder.com/60x90"} alt={b.title} style={{ width: 55 }} />
+                        <div className="flex-grow-1">
+                          <div className="fw-bold">{b.title}</div>
+                          <div className="text-muted">{getAuthorsArray(b).join(", ")}</div>
                         </div>
-                        <button
-                          className="btn btn-sm btn-outline-danger"
-                          onClick={() => removeFromLibrary(b.isbn)}
-                          disabled={deletingIsbn === normalizeIsbn(b.isbn)}
-                          title="Remove from library"
-                        >
-                          <TrashIcon style={{ width: "16px" }} />
+                        <button className="btn btn-sm btn-outline-danger" onClick={() => removeFromLibrary(b.isbn)}>
+                          <TrashIcon style={{ width: 16 }} />
                         </button>
                       </div>
                     ))}
@@ -588,14 +395,11 @@ export const Profile = () => {
         </div>
       </div>
 
-      <BookLibraryModal
+      <MyLibraryPickerModal
         isOpen={isBookModalOpen}
-        onClose={() => {
-          setIsBookModalOpen(false);
-          setActiveSlot(null);
-        }}
+        onClose={() => { setIsBookModalOpen(false); setActiveSlot(null); setPickerMode("top3"); }}
+        books={libraryBooks}
         onSelect={handleBookSelect}
-        onAddToLibrary={() => {}} // No necesitamos agregar a biblioteca aquí
       />
     </div>
   );

@@ -1,49 +1,61 @@
 import { useUser } from "./UserContext";
-import { Link } from "react-router-dom";
-import logo from "../assets/img/Logo.png";
-import { HomeIcon, BellIcon } from '@heroicons/react/24/outline';
+import { useLocation, useNavigate } from "react-router-dom";
+import PillNav from "./PillNav";
 
 export const Header = () => {
-    const { profileImg } = useUser()
+    const { profileImg, userData } = useUser();
+    const location = useLocation();
+    const navigate = useNavigate();
 
+<<<<<<< HEAD
     const savedUser = localStorage.getItem("user_data");
     const userData = savedUser ? JSON.parse(savedUser) : null;
     const username = userData?.username || "Guest";
+=======
+    const saved = JSON.parse(localStorage.getItem("user_data") || "null");
+    const username = userData?.username || saved?.username || saved?.email || "User";
+
+    const safeAvatar =
+        profileImg ||
+        localStorage.getItem("userAvatar") ||
+        "https://i.pravatar.cc/150?img=3";
+
+    const items = [
+        { href: "/home", label: "Home" },
+        { href: "/events", label: "Events" },
+        { href: "/aboutus", label: "About Us" },
+    ];
+>>>>>>> 9681cacd3d99a11349e92fef0e5fce4f02b3be29
 
     return (
         <header className="top-header">
             <div className="header-logo-section">
-                <img src={logo} alt="Logo" style={{ width: "40px" }} />
-                <span className="brand-title">The Reading Room</span>
+                <span className="brand-title">{username}</span>
             </div>
 
             <div className="header-right-side">
-
-                <Link to="/home" className="header-icon-link">
-                    <HomeIcon className="header-icon-svg" />
-                </Link>
-
-                <button className="header-icon-btn">
-                    <BellIcon className="header-icon-svg" />
+                <button
+                    type="button"
+                    className="ai-chat-icon-btn"
+                    onClick={() => navigate("/ai-chat")}
+                    aria-label="AI Chat"
+                >
+                    <img
+                        className="ai-chat-icon-img"
+                        src="/ai-chat-icon.png"
+                        alt="AI Chat"
+                    />
                 </button>
-
-                <div className="user-profile-section">
-                    <span className="user-name">{username || "User"}</span>
-                    <div className="profile-circle">
-                        {/* Muestra la foto de perfil de Cloudinary */}
-                        <img
-                            src={profileImg}
-                            alt="profile"
-                            style={{
-                                width: 40,
-                                height: 40,
-                                borderRadius: "50%",
-                                objectFit: "cover",
-                                border: "2px solid #fff"
-                            }}
-                        />
-                    </div>
-                </div>
+                <PillNav
+                    logo={safeAvatar}
+                    logoAlt={username}
+                    items={items}
+                    activeHref={location.pathname}
+                    baseColor="#231B59"
+                    pillColor="#ffffff"
+                    hoveredPillTextColor="#231B59"
+                    onLogoClick={() => navigate("/profile")}
+                />
             </div>
         </header>
     );

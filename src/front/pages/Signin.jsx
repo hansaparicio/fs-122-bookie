@@ -63,7 +63,7 @@ export const Signin = () => {
       }
 
       await response.json();
-      navigate("/login");
+      navigate("/home");
 
     } catch (err) {
       setError(err.message);

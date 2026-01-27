@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import "./BookLibraryModal.css";
+import portadaLibro from "../assets/img/portada_Libro.png";
 
 const normalizeIsbn = (isbn) => (isbn || "").replaceAll("-", "").replaceAll(" ", "").toUpperCase();
 
@@ -93,7 +94,7 @@ export default function BookLibraryModal({ isOpen, onClose, onSelect, onAddToLib
 
           <div className="blm-grid">
             {foundBooks.map((b) => {
-              const thumb = b.thumbnail || "https://via.placeholder.com/160x240";
+              const hasCover = !!b.thumbnail;
               const isbn = normalizeIsbn(b.isbn);
               const isSelected = normalizeIsbn(selected?.isbn) === isbn;
 
@@ -105,8 +106,23 @@ export default function BookLibraryModal({ isOpen, onClose, onSelect, onAddToLib
                   onClick={() => handlePick(b)}
                 >
                   <div className="blm-cover">
-                    <img src={thumb} alt={b.title} />
+                    {hasCover ? (
+                      <img
+                        src={b.thumbnail}
+                        alt={b.title}
+                      />
+                    ) : (
+                      <div className="blm-no-cover">
+                        <div className="blm-no-cover-title">
+                          {b.title}
+                        </div>
+                        <div className="blm-no-cover-sub">
+                          Libro sin portada
+                        </div>
+                      </div>
+                    )}
                   </div>
+
                   <div className="blm-meta">
                     <div className="blm-book-title" title={b.title}>
                       {b.title || "Untitled"}

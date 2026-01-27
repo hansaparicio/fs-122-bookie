@@ -1,8 +1,8 @@
 export const initialStore=()=>{
   return{
-    message: null,
     favorites: [],
 
+    selectedBook: JSON.parse(localStorage.getItem("selected_book")) || null,
     initialEventList: [
       { title: "Classic Novel Club", date: "May 25 • 6:00 PM", icon: "📖" },
       { title: "Sci‑Fi Readers Meetup", date: "May 28 • 7:30 PM", icon: "🚀" },
@@ -32,13 +32,31 @@ case 'add_favorite':
         favorites: [...store.favorites, action.payload]
       };
 
-case 'delete_favorite':
+      case 'set_selected_book':
+      localStorage.setItem("selected_book", JSON.stringify(action.payload));
       return {
         ...store,
-        favorites: store.favorites.filter((item, index) => index !== action.payload)
+        selectedBook: action.payload
+      };
+
+case 'delete_favorite':
+
+      const bookToDelete = store.favorites[action.payload];
+      const updatedFavorites = store.favorites.filter((item, index) => index !== action.payload);
+
+      let newSelectedBook = store.selectedBook;
+      if (store.selectedBook && bookToDelete && store.selectedBook.title === bookToDelete.title) {
+          newSelectedBook = null;
+          localStorage.removeItem("selected_book");
+      }
+
+      return {
+        ...store,
+        favorites: updatedFavorites,
+        selectedBook: newSelectedBook
       };
 
     default:
-      throw Error('Unknown action.');
+      return store;
   }    
 };

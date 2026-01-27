@@ -193,7 +193,7 @@ export const Home = () => {
     } catch (e) {
       localStorage.removeItem("selected_book");
     }
-  }, [updateProfile]);
+  }, []);
 
   useEffect(() => {
     const syncBook = () => {
@@ -357,8 +357,9 @@ export const Home = () => {
                   <div className="book-card-img shadow-sm">
                     <img
                       src={selectedBook?.thumbnail || portadaLibro}
-                      alt="Book cover"
+                      alt={selectedBook?.title || "Book cover"}
                       className="w-100 h-100 object-fit-cover"
+                      onError={(e) => (e.currentTarget.style.display = "none")}
                     />
                   </div>
 
