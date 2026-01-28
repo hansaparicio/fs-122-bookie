@@ -30,7 +30,7 @@ export const Header = () => {
                     alt="Bookie Logo" 
                     className="header-user-logo"
                 />
-                <span className="brand-title">{username}</span>
+                <span className="brand-title">BOOKIE</span>
             </div>
 
             <div className="header-right-side">
