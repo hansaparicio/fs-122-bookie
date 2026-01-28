@@ -231,21 +231,10 @@ export const Home = () => {
     setUiMessage(null);
   };
 
-  const makeChannelIdFromTitle = (title) => {
-    if (!title) return null;
-
-    const normalized = title
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-
-    const cleaned = normalized
-      .replace(/[^a-z0-9\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-+|-+$/g, "");
-
-    return `book-${cleaned}`;
+  const makeChannelIdFromIsbn = (isbn) => {
+    const normalized = normalizeIsbn(isbn);
+    if (!normalized) return null;
+    return `book-isbn-${normalized}`;
   };
 
   const handleOpenChat = async () => {
@@ -256,13 +245,19 @@ export const Home = () => {
       return;
     }
 
+    const isbn = normalizeIsbn(selectedBook?.isbn);
+    if (!isbn) {
+      setUiMessage({ type: "warning", text: "Este libro no tiene ISBN. Solo puedes chatear sobre libros con ISBN válido." });
+      return;
+    }
+
     const accessToken = localStorage.getItem("access_token");
     if (!accessToken) {
       setUiMessage({ type: "danger", text: "No hay sesión activa. Inicia sesión de nuevo." });
       return;
     }
 
-    const channelId = makeChannelIdFromTitle(selectedBook.title);
+    const channelId = makeChannelIdFromIsbn(isbn);
     if (!channelId) {
       setUiMessage({ type: "danger", text: "No se pudo generar el canal para este libro." });
       return;
@@ -271,37 +266,15 @@ export const Home = () => {
     try {
       setChatLoading(true);
 
-      const listResp = await fetch(`${backendUrl}/api/chat/public-channels`, {
-        method: "GET",
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-
-      if (!listResp.ok) {
-        const err = await listResp.json().catch(() => ({}));
-        throw new Error(err.message || "No se pudieron obtener los canales.");
-      }
-
-      const listData = await listResp.json();
-      const channels = listData.channels || [];
-      const exists = channels.some((ch) => ch.id === channelId);
-
-      if (exists) {
-        navigate(`/chat?channel_id=${encodeURIComponent(channelId)}`, {
-          state: { selectedBook, channelId },
-        });
-        return;
-      }
-
-      const wantCreate = window.confirm(`No existe un chat para “${selectedBook.title}”.\n\n¿Quieres crearlo ahora?`);
-      if (!wantCreate) {
-        setUiMessage({ type: "warning", text: "Chat no creado. Puedes crear uno cuando quieras." });
-        return;
-      }
-
-      const createResp = await fetch(`${backendUrl}/api/chat/create-or-join-channel`, {
+      const createResp = await fetch(`${backendUrl}/api/chat/create-or-join-channel-by-isbn`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ book_title: selectedBook.title }),
+        body: JSON.stringify({
+          isbn: isbn,
+          book_title: selectedBook.title,
+          thumbnail: selectedBook.thumbnail || null,
+          authors: selectedBook.authors || [],
+        }),
       });
 
       if (!createResp.ok) {
@@ -312,7 +285,7 @@ export const Home = () => {
       const createData = await createResp.json();
       const createdChannelId = createData.channel_id || channelId;
 
-      navigate(`/chat?channel_id=${encodeURIComponent(createdChannelId)}`, {
+      navigate(`/chat?channel=${encodeURIComponent(createdChannelId)}&isbn=${encodeURIComponent(isbn)}&book=${encodeURIComponent(selectedBook.title)}`, {
         state: { selectedBook, channelId: createdChannelId },
       });
     } catch (e) {
@@ -436,8 +409,8 @@ export const Home = () => {
                   style={{ borderRadius: "var(--card-radius)" }}
                 >
                   <div className="card-body p-1 d-flex flex-column h-100 text-start">
-                    <p className="small fw-medium mb-2">“ Aure and 12 others are talking about this chapter... ”</p>
-                    <div className="text-end text-muted opacity-25 fs-4 mt-n2">”</div>
+                    <p className="small fw-medium mb-2">" Aure and 12 others are talking about this chapter... "</p>
+                    <div className="text-end text-muted opacity-25 fs-4 mt-n2">"</div>
                     <div className="d-flex justify-content-between mt-auto pt-2 border-top small text-muted">
                       <span>❤️ 64k</span>
                       <span>💬 Comment</span>

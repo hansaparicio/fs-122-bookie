@@ -22,10 +22,32 @@ export const getStreamClient = () => {
 };
 
 /**
- * Generate a consistent channel ID from a book title
+ * Normalize ISBN by removing dashes and spaces
+ * @param {string} isbn - The ISBN to normalize
+ * @returns {string} Normalized ISBN
+ */
+export const normalizeIsbn = (isbn) => {
+  return (isbn || "").replace(/-/g, "").replace(/\s/g, "").toUpperCase();
+};
+
+/**
+ * Generate a consistent channel ID from a book ISBN
+ * This ensures all users discussing the same book (by ISBN) join the same channel
+ * @param {string} isbn - The book's ISBN
+ * @returns {string} The channel ID
+ */
+export const generateBookChannelIdByIsbn = (isbn) => {
+  const normalized = normalizeIsbn(isbn);
+  if (!normalized) return null;
+  return `book-isbn-${normalized}`;
+};
+
+/**
+ * Generate a consistent channel ID from a book title (legacy, kept for compatibility)
  * This ensures all users discussing the same book join the same channel
  * @param {string} bookTitle - The title of the book
  * @returns {string} The channel ID
+ * @deprecated Use generateBookChannelIdByIsbn instead for better matching
  */
 export const generateBookChannelId = (bookTitle) => {
   return `book-${bookTitle
@@ -88,10 +110,64 @@ export const disconnectUser = async () => {
 };
 
 /**
- * Create or join a channel for a book discussion
+ * Create or join a channel for a book discussion using ISBN
+ * Uses the backend API to create/join channels (server has proper permissions)
+ * @param {Object} book - The book object with isbn, title, thumbnail, authors
+ * @returns {Promise<Object>} The channel object
+ */
+export const createOrJoinBookChannelByIsbn = async (book) => {
+  const client = getStreamClient();
+
+  if (!client || !client.userID) {
+    throw new Error("User must be connected before creating a channel");
+  }
+
+  const accessToken = localStorage.getItem("access_token");
+  if (!accessToken) {
+    throw new Error("No access token found");
+  }
+
+  const isbn = normalizeIsbn(book?.isbn);
+  if (!isbn) {
+    throw new Error("Book must have a valid ISBN to create a chat");
+  }
+
+  // Use backend API to create/join channel by ISBN
+  const response = await fetch(`${BACKEND_URL}/chat/create-or-join-channel-by-isbn`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      isbn: isbn,
+      book_title: book.title || "Libro sin título",
+      thumbnail: book.thumbnail || null,
+      authors: book.authors || [],
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Error creating/joining channel");
+  }
+
+  const data = await response.json();
+  const channelId = data.channel_id;
+
+  // Now watch the channel from the client
+  const channel = client.channel("messaging", channelId);
+  await channel.watch();
+
+  return channel;
+};
+
+/**
+ * Create or join a channel for a book discussion (legacy - by title)
  * Uses the backend API to create/join channels (server has proper permissions)
  * @param {string} bookTitle - The book being discussed
  * @returns {Promise<Object>} The channel object
+ * @deprecated Use createOrJoinBookChannelByIsbn instead
  */
 export const createOrJoinBookChannel = async (bookTitle) => {
   const client = getStreamClient();

@@ -133,6 +133,10 @@ def books_search():
         "langRestrict": "es",
         "printType": "books",
     }
+    
+    google_books_api_key = os.getenv("GOOGLE_BOOKS_API_KEY")
+    if google_books_api_key:
+        params["key"] = google_books_api_key
 
     try:
         r = requests.get(
@@ -142,11 +146,16 @@ def books_search():
             headers={"User-Agent": "Mozilla/5.0"}
         )
     except requests.RequestException as e:
-        
         return jsonify({
             "message": "Error connecting to Google Books",
             "error": str(e)
         }), 502
+
+    if r.status_code == 429:
+        return jsonify({
+            "message": "Se ha excedido el límite de búsquedas. Intenta de nuevo en unos minutos.",
+            "error": "rate_limit"
+        }), 429
 
     if r.status_code != 200:
         return jsonify({
@@ -542,6 +551,71 @@ def create_or_join_channel():
         
     except Exception as e:
         return jsonify({"message": f"Error creating/joining channel: {str(e)}"}), 500
+
+
+@api.route("/chat/create-or-join-channel-by-isbn", methods=["POST"])
+def create_or_join_channel_by_isbn():
+    """
+    Create a new book channel or join if it already exists.
+    Uses ISBN as the unique identifier for the channel.
+    This ensures all users discussing the same book (by ISBN) join the same channel.
+    """
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return jsonify({"message": "Missing or invalid Authorization header"}), 401
+    
+    token = auth_header.split(" ")[1]
+    user_id = verify_token(token)
+    
+    if not user_id:
+        return jsonify({"message": "Invalid or expired token"}), 401
+
+    data = request.get_json() or {}
+    isbn = normalize_isbn(data.get("isbn"))
+    book_title = data.get("book_title", "Libro sin título")
+    thumbnail = data.get("thumbnail")
+    authors = data.get("authors", [])
+    
+    if not isbn:
+        return jsonify({"message": "isbn is required"}), 400
+    
+    channel_id = f"book-isbn-{isbn}"
+    
+    user_id_str = str(user_id)
+    
+    try:
+        client = get_stream_client()
+        
+        channel = client.channel(
+            "messaging",
+            channel_id,
+            {
+                "name": f"📚 {book_title}",
+                "book_title": book_title,
+                "isbn": isbn,
+                "thumbnail": thumbnail,
+                "authors": authors if isinstance(authors, list) else [authors] if authors else [],
+                "members": [user_id_str],
+            }
+        )
+        
+        channel.create(user_id_str)
+        
+        try:
+            channel.add_members([user_id_str])
+        except Exception:
+            pass
+        
+        return jsonify({
+            "message": "Successfully joined channel",
+            "channel_id": channel_id,
+            "book_title": book_title,
+            "isbn": isbn,
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"message": f"Error creating/joining channel: {str(e)}"}), 500
+
     
     #---RUTAS BIBLOTECA DE LIBROS---#
 
@@ -792,6 +866,10 @@ def get_random_book():
         "orderBy": "relevance"
     }
     
+    google_books_api_key = os.getenv("GOOGLE_BOOKS_API_KEY")
+    if google_books_api_key:
+        params["key"] = google_books_api_key
+    
     try:
         r = requests.get(
             url,
@@ -799,6 +877,12 @@ def get_random_book():
             timeout=10,
             headers={"User-Agent": "Mozilla/5.0"}
         )
+        
+        if r.status_code == 429:
+            return jsonify({
+                "message": "Se ha excedido el límite de búsquedas. Intenta de nuevo en unos minutos.",
+                "error": "rate_limit"
+            }), 429
         
         if r.status_code != 200:
             return jsonify({

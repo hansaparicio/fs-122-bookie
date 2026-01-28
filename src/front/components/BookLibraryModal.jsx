@@ -32,13 +32,23 @@ export default function BookLibraryModal({ isOpen, onClose, onSelect, onAddToLib
     setLoading(true);
     try {
       const resp = await fetch(`${backendUrl}/api/books/search?title=${encodeURIComponent(q)}`);
-      if (!resp.ok) throw new Error("Search failed");
+      if (!resp.ok) {
+        const errorData = await resp.json().catch(() => ({}));
+        if (resp.status === 429 || errorData.error === "rate_limit") {
+          throw new Error("rate_limit");
+        }
+        throw new Error(errorData.message || "Search failed");
+      }
       const data = await resp.json();
       setFoundBooks(data.items || []);
     } catch (e) {
       console.error(e);
       setFoundBooks([]);
-      alert("No se pudo buscar libros.");
+      if (e.message === "rate_limit") {
+        alert("Se ha excedido el límite de búsquedas. Intenta de nuevo en unos minutos.");
+      } else {
+        alert("No se pudo buscar libros. Verifica tu conexión e intenta de nuevo.");
+      }
     } finally {
       setLoading(false);
     }
