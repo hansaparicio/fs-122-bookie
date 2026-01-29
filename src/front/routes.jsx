@@ -3,6 +3,7 @@ import {
   createBrowserRouter,
   createRoutesFromElements,
   Route,
+  Navigate,
 } from "react-router-dom";
 
 // Importación de Layouts y Componentes
@@ -28,8 +29,8 @@ export const router = createBrowserRouter(
     <Route errorElement={<h1>Not found!</h1>}>
 
       {/* 1. RUTAS LIMPIAS (Sin Header ni Navbar) */}
-      {/* Al estar fuera de cualquier componente Layout, se verán solas */}
-      <Route path="/" element={<Login />} />
+      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/login" element={<Login />} />
       <Route path="/signin" element={<Signin />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
@@ -45,7 +46,6 @@ export const router = createBrowserRouter(
         <Route path="/ai-chat" element={<AIChatPage />} />
         <Route path="/events" element={<Events />} />
       </Route>
-
       {/* 3. RUTA CON SOLO HEADER (Chat) */}
       {/* Aquí envolvemos el Chat directamente en un contenedor con Header */}
       <Route

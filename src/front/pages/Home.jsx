@@ -497,16 +497,6 @@ export const Home = () => {
               ))}
             </div>
 
-            <div className="d-flex justify-content-center mt-4">
-              <button
-                onClick={handleLogout}
-                className="btn btn-outline-wine rounded-pill px-4 py-2 fw-bold"
-                style={{ fontSize: "0.9rem" }}
-              >
-                Log Out
-              </button>
-            </div>
-
             <CreateEventModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleAddEvent} />
           </div>
         </div>
