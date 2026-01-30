@@ -1,6 +1,6 @@
 .wrapper_aboutus {
-  background-color: #e5e4e2;
-  height: 100vh;
+  background-color: #ebe6e3;
+  height: auto;
   width: 100vw;
   overflow: hidden;
   display: flex;
@@ -35,7 +35,7 @@
 }
 .member-box:hover {
   transform: translateY(-10px);
-  border: 2px solid #11DA3E7;
+  border: 2px solid #11DA3E0;
 }
 
 .member-avatar {

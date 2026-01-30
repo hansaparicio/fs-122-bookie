@@ -801,7 +801,7 @@ def ai_chat():
                 stream=True,
                 generation_config=genai.types.GenerationConfig(
                     temperature=0.7,
-                    max_output_tokens=500,
+                    max_output_tokens=2048,
                 )
             )
         except Exception as e:
@@ -828,12 +828,9 @@ def ai_chat():
         )
         
     except ImportError:
-
         return jsonify({
             "message": "google-generativeai library not installed. Run: pipenv install google-generativeai (or install_genai.bat) and restart the backend with: pipenv run flask run -p 3001"
         }), 500
-
-        return jsonify({"message": "google-generativeai library not installed"}), 500
 
     except Exception as e:
         return jsonify({"message": f"Error in AI chat: {str(e)}"}), 500

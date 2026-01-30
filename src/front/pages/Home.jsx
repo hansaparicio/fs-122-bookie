@@ -225,16 +225,12 @@ export const Home = () => {
     navigate("/");
   };
 
-  const handleSelectBook = (book) => {
-    setSelectedBook(book);
-    localStorage.setItem("selected_book", JSON.stringify(book));
-    setUiMessage(null);
-  };
-
   const makeChannelIdFromIsbn = (isbn) => {
     const normalized = normalizeIsbn(isbn);
     if (!normalized) return null;
     return `book-isbn-${normalized}`;
+  };
+
   const handleSelectBook = (book) => {
     const mapped = {
       id: book.id,
@@ -585,6 +581,4 @@ export const Home = () => {
       </div>
     </div>
   );
-}
-
 };

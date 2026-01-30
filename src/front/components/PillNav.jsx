@@ -168,19 +168,6 @@ const PillNav = ({
 
   return (
     <nav className="pill-nav pill-nav-inline" aria-label="Primary" style={cssVars}>
-      <button
-        type="button"
-        className="pill-logo"
-        aria-label="Profile"
-        onMouseEnter={handleLogoEnter}
-        onClick={onLogoClick}
-        ref={(el) => {
-          logoRef.current = el;
-        }}
-      >
-        <img ref={logoImgRef} src={logo} alt={logoAlt} />
-      </button>
-
       <div className="pill-nav-items" ref={navItemsRef}>
         <ul className="pill-list" role="menubar">
           {items.map((item, i) => (

@@ -47,21 +47,17 @@ export const router = createBrowserRouter(
 
       </Route>
 
-        <Route path="/events" element={<Events />} />
-      </Route>
+      <Route path="/events" element={<Events />} />
 
       {/* 3. RUTA CON SOLO HEADER (Chat) */}
-      {/* Aquí envolvemos el Chat directamente en un contenedor con Header */}
-      <Route
-        path="/chat"
-        element={
-          <div className="app-wrapper">
-            <Header />
-            <main className="content-area">
-              <Chat1 />
-            </main>
-          </div>
-        }
-      />
+      <Route path="/chat" element={
+        <div className="app-wrapper">
+          <Header />
+          <main className="content-area">
+            <Chat1 />
+          </main>
+        </div>
+      } />
+    </Route>
   )
 );

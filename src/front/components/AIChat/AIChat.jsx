@@ -13,6 +13,7 @@ const AIChat = () => {
     const [isSurprising, setIsSurprising] = useState(false);
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
+    const streamContentRef = useRef("");
 
     const backendUrl = import.meta.env.VITE_BACKEND_URL;
     const API_BASE = `${backendUrl}api`;
@@ -75,12 +76,25 @@ const AIChat = () => {
                 throw new Error(errorData.message || "Error al comunicarse con la IA");
             }
 
-            // Stream con buffer: procesar solo líneas completas para chunks fragmentados
+            // Stream con buffer: acumular en ref para no perder chunks por condiciones de carrera
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let buffer = "";
 
+            streamContentRef.current = "";
             setMessages(prev => [...prev, { role: "assistant", content: "" }]);
+
+            const appendStreamContent = (content) => {
+                streamContentRef.current += content;
+                setMessages(prev => {
+                    const next = [...prev];
+                    const last = next[next.length - 1];
+                    if (last?.role === "assistant") {
+                        next[next.length - 1] = { ...last, content: streamContentRef.current };
+                    }
+                    return next;
+                });
+            };
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -88,7 +102,7 @@ const AIChat = () => {
 
                 buffer += decoder.decode(value, { stream: true });
                 const lines = buffer.split("\n");
-                buffer = lines.pop() ?? ""; // guardar línea incompleta
+                buffer = lines.pop() ?? "";
 
                 for (const line of lines) {
                     if (!line.startsWith("data: ")) continue;
@@ -96,17 +110,8 @@ const AIChat = () => {
                     if (data === "[DONE]") continue;
                     try {
                         const parsed = JSON.parse(data);
-                        if (parsed.content) {
-                            setMessages(prev => {
-                                const next = [...prev];
-                                const last = next[next.length - 1];
-                                next[next.length - 1] = {
-                                    ...last,
-                                    content: last.content + parsed.content
-                                };
-                                return next;
-                            });
-                        }
+                        if (parsed.content) appendStreamContent(parsed.content);
+                        if (parsed.error) appendStreamContent(`\n[Error: ${parsed.error}]`);
                     } catch (_) {
                         // ignorar líneas no JSON
                     }
@@ -118,14 +123,7 @@ const AIChat = () => {
                 if (data !== "[DONE]") {
                     try {
                         const parsed = JSON.parse(data);
-                        if (parsed.content) {
-                            setMessages(prev => {
-                                const next = [...prev];
-                                const last = next[next.length - 1];
-                                next[next.length - 1] = { ...last, content: last.content + parsed.content };
-                                return next;
-                            });
-                        }
+                        if (parsed.content) appendStreamContent(parsed.content);
                     } catch (_) {}
                 }
             }
