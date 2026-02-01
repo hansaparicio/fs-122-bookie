@@ -116,16 +116,17 @@ const Chat = ({ channelId = null, bookTitle = null, onJoinChannel = null, onClos
 
                 setClient(streamClient);
 
-                // If a specific channel is requested, open it
+                // If a specific channel is requested, ensure we're a member before watch (evita 403)
                 if (channelId) {
+                    if (channelId.startsWith("book-")) {
+                        try {
+                            await joinBookChannel(channelId);
+                        } catch (e) {
+                            // Si ya es miembro o falla, intentar watch de todos modos
+                        }
+                    }
                     const selectedChannel = streamClient.channel("messaging", channelId);
                     await selectedChannel.watch();
-                    // Ensure user is a member
-                    try {
-                        await selectedChannel.addMembers([streamClient.userID]);
-                    } catch (e) {
-                        console.log("User already member or error:", e.message);
-                    }
                     setChannel(selectedChannel);
                 }
 
