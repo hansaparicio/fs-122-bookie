@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import CreateEventModal from "../components/CreateEventModal";
+import EventDetailsModal from "../components/EventDetailsModal";
 import BookLibraryModal from "../components/BookLibraryModal";
 import "./Home.css";
 import portadaLibro from "../assets/img/portada_Libro.png";
@@ -12,14 +13,17 @@ const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 export const Home = () => {
   const { store, dispatch } = useGlobalReducer();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [eventList] = useState(store.initialEventList);
+
+  const [eventList, setEventList] = useState(store.initialEventList || []);
+  const [isEventDetailsOpen, setIsEventDetailsOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+
   const navigate = useNavigate();
   const { updateProfile } = useUser();
 
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
-  const [modalMode, setModalMode] = useState("prologue"); // "prologue" | "library"
   const [selectedBook, setSelectedBook] = useState(null);
 
   const [uiMessage, setUiMessage] = useState(null);
@@ -87,6 +91,22 @@ export const Home = () => {
       setUiMessage({ type: "danger", text: e.message });
     }
   };
+
+  const loadGlobalEvents = () => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("event_global_list") || "[]");
+      if (Array.isArray(saved) && saved.length) return saved;
+    } catch (e) {}
+    if (Array.isArray(store.eventGlobalList) && store.eventGlobalList.length) return store.eventGlobalList;
+    return store.initialEventList || [];
+  };
+
+  useEffect(() => {
+    setEventList(loadGlobalEvents());
+    const sync = () => setEventList(loadGlobalEvents());
+    window.addEventListener("local-storage-changed", sync);
+    return () => window.removeEventListener("local-storage-changed", sync);
+  }, [store.eventGlobalList, store.initialEventList]);
 
   useEffect(() => {
     if (!enableSpotlight) return;
@@ -211,23 +231,39 @@ export const Home = () => {
 
   const handleAddEvent = (newEvent) => {
     dispatch({ type: "add_event", payload: newEvent });
+
+    try {
+      const current = JSON.parse(localStorage.getItem("event_global_list") || "[]");
+      const id = newEvent?.id ?? newEvent?.event_id ?? newEvent?._id ?? `${(newEvent?.title || "event").slice(0, 20)}-${Date.now()}`;
+      const withId = { ...newEvent, id };
+
+      const exists = current.some((e) => (e.id ?? e.event_id ?? e._id) === id);
+      const next = exists
+        ? current.map((e) => ((e.id ?? e.event_id ?? e._id) === id ? { ...e, ...withId } : e))
+        : [...current, withId];
+
+      localStorage.setItem("event_global_list", JSON.stringify(next));
+      window.dispatchEvent(new Event("local-storage-changed"));
+      setEventList(next);
+    } catch (e) {}
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("user_data");
+    localStorage.removeItem("stream_token");
+    localStorage.removeItem("selected_book");
+    localStorage.removeItem("token");
+    localStorage.removeItem("selectedBook");
+    localStorage.removeItem("userAvatar");
+    navigate("/");
   };
 
   const handleSelectBook = (book) => {
-    const mapped = {
-      id: book.id,
-      title: book.title,
-      authors: Array.isArray(book.authors) ? book.authors : [],
-      publisher: book.publisher || null,
-      thumbnail: book.thumbnail || null,
-      isbn: normalizeIsbn(book.isbn),
-    };
-
-    setSelectedBook(mapped);
-    localStorage.setItem("selected_book", JSON.stringify(mapped));
+    setSelectedBook(book);
+    localStorage.setItem("selected_book", JSON.stringify(book));
     setUiMessage(null);
-
-    window.dispatchEvent(new Event("local-storage-changed"));
   };
 
   const makeChannelIdFromTitle = (title) => {
@@ -321,17 +357,6 @@ export const Home = () => {
     }
   };
 
-  const openPrologue = () => {
-    setModalMode("prologue");
-    setIsLibraryOpen(true);
-  };
-
-  const openLibrary = (e) => {
-    e.stopPropagation();
-    setModalMode("library");
-    setIsLibraryOpen(true);
-  };
-
   return (
     <div className="container-fluid home-fixed-wrap" style={{ backgroundColor: "var(--book-bg)" }}>
       <div
@@ -358,35 +383,29 @@ export const Home = () => {
               )}
 
               <div className="d-flex gap-3 flex-wrap">
-                <div className="home-book-wrap">
-                  <button
-                    type="button"
-                    className={`card border-0 shadow-sm p-3 text-center mb-card ${enableBorderGlow ? "mb-border-glow" : ""}`}
-                    style={{ borderRadius: "var(--card-radius)", width: "180px", cursor: "pointer" }}
-                    onClick={openPrologue}
-                  >
-                    <div className="book-card-img shadow-sm">
-                      <img
-                        src={selectedBook?.thumbnail || portadaLibro}
-                        alt={selectedBook?.title || "Book cover"}
-                        className="w-100 h-100 object-fit-cover"
-                        onError={(e) => (e.currentTarget.style.display = "none")}
-                      />
+                <button
+                  type="button"
+                  className={`card border-0 shadow-sm p-3 text-center mb-card ${enableBorderGlow ? "mb-border-glow" : ""}`}
+                  style={{ borderRadius: "var(--card-radius)", width: "180px", cursor: "pointer" }}
+                  onClick={() => setIsLibraryOpen(true)}
+                >
+                  <div className="book-card-img shadow-sm">
+                    <img
+                      src={selectedBook?.thumbnail || portadaLibro}
+                      alt={selectedBook?.title || "Book cover"}
+                      className="w-100 h-100 object-fit-cover"
+                      onError={(e) => (e.currentTarget.style.display = "none")}
+                    />
+                  </div>
+
+                  <span className="fw-bold small">{selectedBook?.title || "Your Book !!"}</span>
+
+                  {selectedBook?.isbn && (
+                    <div className="text-muted" style={{ fontSize: "0.7rem" }}>
+                      ISBN: {selectedBook.isbn}
                     </div>
-
-                    <span className="fw-bold small">{selectedBook?.title || "Your Book !!"}</span>
-
-                    {selectedBook?.isbn && (
-                      <div className="text-muted" style={{ fontSize: "0.7rem" }}>
-                        ISBN: {selectedBook.isbn}
-                      </div>
-                    )}
-                  </button>
-
-                  <button type="button" className="home-plus-btn" onClick={openLibrary} aria-label="Add book">
-                    +
-                  </button>
-                </div>
+                  )}
+                </button>
 
                 <div
                   className={`card border-0 shadow-sm p-4 flex-grow-1 mb-card ${enableBorderGlow ? "mb-border-glow" : ""}`}
@@ -436,16 +455,19 @@ export const Home = () => {
                 ACTIVITY FEED
               </h5>
 
-              <div className="d-flex gap-3">
+              <div className="d-flex gap-3 flex-wrap">
                 <div
-                  className={`card border-0 p-4 text-center shadow-sm flex-grow-1 bg-lavender-card mb-card ${
-                    enableBorderGlow ? "mb-border-glow" : ""
-                  }`}
-                  style={{ borderRadius: "var(--card-radius)" }}
+                  className={`card border-0 shadow-sm p-3 bg-white mb-card ${enableBorderGlow ? "mb-border-glow" : ""}`}
+                  style={{ borderRadius: "var(--card-radius)", width: "190px", cursor: "pointer" }}
+                  onClick={() => navigate("/events")}
                 >
-                  <span className="fs-1" style={{ filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))" }}>
-                    📅
-                  </span>
+                  <div className="d-flex align-items-center justify-content-between">
+                    <div className="rounded-circle p-2" style={{ backgroundColor: "rgba(139, 26, 48, 0.12)" }}>
+                      <span style={{ fontSize: "1.1rem" }}>📅</span>
+                    </div>
+                    <span style={{ fontSize: "1.35rem", opacity: 0.25 }}>›</span>
+                  </div>
+
                   <h6 className="fw-bold mt-2 mb-1" style={{ color: "#231B59" }}>
                     Explore Events
                   </h6>
@@ -489,8 +511,8 @@ export const Home = () => {
             </div>
 
             <div className="row g-3">
-              {(store.eventGlobalList.length === 0 ? eventList : store.eventGlobalList).map((ev, index) => (
-                <div className="col-md-6" key={index}>
+              {eventList.map((ev, index) => (
+                <div className="col-md-6" key={ev.id || index}>
                   <div
                     className={`card border-0 shadow-sm p-3 d-flex flex-row align-items-center event-card mb-card ${
                       enableBorderGlow ? "mb-border-glow" : ""
@@ -515,13 +537,27 @@ export const Home = () => {
                         {ev.date}
                       </p>
                     </div>
-                    <button className="btn btn-wine btn-sm rounded-pill px-3">View More</button>
+                    <button
+                      className="btn btn-wine btn-sm rounded-pill px-3"
+                      onClick={() => {
+                        setSelectedEvent(ev);
+                        setIsEventDetailsOpen(true);
+                      }}
+                    >
+                      View More
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
 
             <CreateEventModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleAddEvent} />
+
+            <EventDetailsModal
+              isOpen={isEventDetailsOpen}
+              onClose={() => setIsEventDetailsOpen(false)}
+              event={selectedEvent}
+            />
           </div>
         </div>
 
@@ -529,8 +565,6 @@ export const Home = () => {
           isOpen={isLibraryOpen}
           onClose={() => setIsLibraryOpen(false)}
           onSelect={handleSelectBook}
-          selectedBook={selectedBook}
-          mode={modalMode}
           onAddToLibrary={addBookToLibrary}
         />
       </div>

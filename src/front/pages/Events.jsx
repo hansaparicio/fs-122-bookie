@@ -1,14 +1,24 @@
-import React, { useMemo, useState } from "react";
-import { GoogleMap, LoadScript, Marker, InfoWindow } from "@react-google-maps/api";
+import React, { useMemo, useRef, useState } from "react";
+import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from "@react-google-maps/api";
 import AnimatedList from "../components/AnimatedList";
+import CreateEventModal from "../components/CreateEventModal";
+import EventDetailsModal from "../components/EventDetailsModal";
+import useGlobalReducer from "../hooks/useGlobalReducer";
 import "./Events.css";
 
 export const Events = () => {
+  const { store, dispatch } = useGlobalReducer();
+
   const [selected, setSelected] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [detailsEvent, setDetailsEvent] = useState(null);
+
+  const mapRef = useRef(null);
 
   const center = useMemo(() => ({ lat: 40.416775, lng: -3.70379 }), []);
 
-  const events = useMemo(
+  const baseEvents = useMemo(
     () => [
       {
         id: "prado-1",
@@ -18,6 +28,8 @@ export const Events = () => {
         datetimeISO: "2026-02-05T18:30:00",
         lat: 40.413782,
         lng: -3.692127,
+        icon: "📖",
+        created_by_name: "Bookie",
       },
       {
         id: "retiro-1",
@@ -27,6 +39,8 @@ export const Events = () => {
         datetimeISO: "2026-02-08T11:00:00",
         lat: 40.41526,
         lng: -3.68442,
+        icon: "☕",
+        created_by_name: "Bookie",
       },
       {
         id: "matadero-1",
@@ -36,6 +50,8 @@ export const Events = () => {
         datetimeISO: "2026-02-12T19:00:00",
         lat: 40.39194,
         lng: -3.69833,
+        icon: "🎤",
+        created_by_name: "Bookie",
       },
     ],
     []
@@ -43,116 +59,161 @@ export const Events = () => {
 
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: "google-maps-script",
+    googleMapsApiKey: apiKey || "",
+    libraries: ["places"],
+    language: "es",
+    region: "ES",
+  });
+
+  const loadEvents = () => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("event_global_list") || "[]");
+      if (Array.isArray(saved) && saved.length) return saved;
+    } catch {}
+    if (Array.isArray(store.eventGlobalList) && store.eventGlobalList.length) return store.eventGlobalList;
+    return baseEvents;
+  };
+
+  const [events, setEvents] = useState(loadEvents());
+
+  const persistEvents = (list) => {
+    try {
+      localStorage.setItem("event_global_list", JSON.stringify(list));
+      window.dispatchEvent(new Event("local-storage-changed"));
+    } catch {}
+  };
+
+  const upsertEvent = (ev) => {
+    const id =
+      ev?.id ??
+      ev?.event_id ??
+      ev?._id ??
+      `${(ev?.title || "event").slice(0, 20)}-${Date.now()}`;
+
+    const withId = { ...ev, id };
+
+    setEvents((prev) => {
+      const idx = prev.findIndex((x) => (x.id ?? x.event_id ?? x._id) === id);
+      const next = idx === -1 ? [...prev, withId] : prev.map((x, i) => (i === idx ? withId : x));
+      persistEvents(next);
+      return next;
+    });
+
+    return withId;
+  };
+
   const formatDateTime = (iso) => {
     const d = new Date(iso);
-    const date = d.toLocaleDateString("es-ES", {
-      weekday: "short",
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-    const time = d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
-    return { date, time };
+    return {
+      date: d.toLocaleDateString("es-ES", { weekday: "short", day: "2-digit", month: "short" }),
+      time: d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
+    };
   };
 
-  const handleJoin = (event) => {
-    alert(`Te has apuntado (demo) a: ${event.title}`);
-    console.log("JOIN_EVENT_DEMO", event.id);
+  const focusMap = (ev) => {
+    if (!mapRef.current || typeof ev?.lat !== "number" || typeof ev?.lng !== "number") return;
+    mapRef.current.panTo({ lat: ev.lat, lng: ev.lng });
+    mapRef.current.setZoom(15);
   };
 
-  if (!apiKey) {
-    return (
-      <div className="events-fallback">
-        <h2>Falta la API Key de Google Maps</h2>
-        <p>
-          Añade <code>VITE_GOOGLE_MAPS_API_KEY</code> en tu <code>.env</code> y reinicia el servidor.
-        </p>
-      </div>
-    );
-  }
+  const handleSelect = (ev) => {
+    setSelected(ev);
+    focusMap(ev);
+  };
+
+  const handleAddEvent = (newEvent) => {
+    dispatch({ type: "add_event", payload: newEvent });
+    const inserted = upsertEvent(newEvent);
+    setSelected(inserted);
+    focusMap(inserted);
+  };
+
+  const handleJoin = (ev) => {
+    alert(`Te has apuntado (demo) a: ${ev.title}`);
+  };
+
+  if (!apiKey) return <div className="events-fallback">Falta GOOGLE MAPS API KEY</div>;
+  if (loadError) return <div className="events-fallback">Error cargando Google Maps</div>;
+  if (!isLoaded) return <div className="events-fallback">Cargando mapa…</div>;
 
   return (
     <div className="events-page">
-      <LoadScript googleMapsApiKey={apiKey}>
-        <GoogleMap
-          mapContainerClassName="events-map"
-          center={center}
-          zoom={13}
-          options={{
-            disableDefaultUI: true,
-            zoomControl: true,
-            clickableIcons: false,
-            gestureHandling: "greedy",
-          }}
-          onClick={() => setSelected(null)}
-        >
-          {events.map((ev) => (
-            <Marker
-              key={ev.id}
-              position={{ lat: ev.lat, lng: ev.lng }}
-              onClick={() => setSelected(ev)}
-            />
+      <GoogleMap
+        mapContainerClassName="events-map"
+        center={center}
+        zoom={13}
+        options={{ disableDefaultUI: true, zoomControl: true, clickableIcons: false }}
+        onLoad={(map) => (mapRef.current = map)}
+        onClick={() => setSelected(null)}
+      >
+        {events
+          .filter((ev) => typeof ev.lat === "number" && typeof ev.lng === "number")
+          .map((ev) => (
+            <Marker key={ev.id} position={{ lat: ev.lat, lng: ev.lng }} onClick={() => handleSelect(ev)} />
           ))}
 
-          {selected && (
-            <InfoWindow
-              position={{ lat: selected.lat, lng: selected.lng }}
-              onCloseClick={() => setSelected(null)}
-            >
-              <div className="events-infowindow">
-                <div className="events-iw-title">{selected.title}</div>
+        {selected && (
+          <InfoWindow
+            position={{ lat: selected.lat, lng: selected.lng }}
+            options={{ pixelOffset: new window.google.maps.Size(0, -55) }}
+            onCloseClick={() => setSelected(null)}
+          >
+            <div className="events-infowindow">
+              <div className="events-iw-title">{selected.title}</div>
+              <div className="events-iw-row">{selected.place}</div>
+              <div className="events-iw-row">{formatDateTime(selected.datetimeISO).date}</div>
 
-                <div className="events-iw-row">
-                  <span className="events-iw-label">Lugar:</span> {selected.place}
-                </div>
-                <div className="events-iw-row">
-                  <span className="events-iw-label">Dirección:</span> {selected.address}
-                </div>
-                <div className="events-iw-row">
-                  <span className="events-iw-label">Fecha:</span> {formatDateTime(selected.datetimeISO).date}
-                </div>
-                <div className="events-iw-row">
-                  <span className="events-iw-label">Hora:</span> {formatDateTime(selected.datetimeISO).time}
-                </div>
-
+              <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
                 <button className="events-join-btn" onClick={() => handleJoin(selected)}>
                   Apuntarme
                 </button>
+                <button
+                  className="events-join-btn"
+                  onClick={() => {
+                    setDetailsEvent(selected);
+                    setIsDetailsOpen(true);
+                  }}
+                >
+                  View More
+                </button>
               </div>
-            </InfoWindow>
-          )}
-        </GoogleMap>
-      </LoadScript>
+            </div>
+          </InfoWindow>
+        )}
+      </GoogleMap>
 
       <div className="events-right-overlay">
         <div className="events-right-card">
-          <div className="events-right-header">
-            <div className="events-right-title">Eventos</div>
-            <div className="events-right-subtitle">Pasa el ratón o haz click</div>
-          </div>
-
-          <AnimatedList
-            items={events}
-            onItemSelect={(item) => setSelected(item)}
-            showGradients
-            enableArrowNavigation
-            displayScrollbar
-            initialSelectedIndex={-1}
-            className="events-animated-list"
-            renderItem={(ev) => {
-              const { date, time } = formatDateTime(ev.datetimeISO);
-              return (
-                <div className="events-list-item">
-                  <div className="events-list-title">{ev.title}</div>
-                  <div className="events-list-meta">
-                    {ev.place} · {date} · {time}
+          <div className="events-list-box">
+            <AnimatedList
+              items={events}
+              onItemSelect={(item) => handleSelect(item)}
+              showGradients
+              enableArrowNavigation
+              displayScrollbar
+              initialSelectedIndex={-1}
+              renderItem={(ev) => {
+                const { date, time } = formatDateTime(ev.datetimeISO);
+                return (
+                  <div>
+                    <p className="item-text" style={{ fontWeight: 800, marginBottom: 6 }}>
+                      {ev.title}
+                    </p>
+                    <p className="item-text" style={{ opacity: 0.75, marginBottom: 0, fontSize: "0.85rem" }}>
+                      {ev.place} · {date} · {time}
+                    </p>
                   </div>
-                </div>
-              );
-            }}
-          />
+                );
+              }}
+            />
+          </div>
         </div>
       </div>
+
+      <CreateEventModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleAddEvent} />
+      <EventDetailsModal isOpen={isDetailsOpen} onClose={() => setIsDetailsOpen(false)} event={detailsEvent} />
     </div>
   );
 };

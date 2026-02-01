@@ -1,0 +1,149 @@
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 10, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modal-content {
+  width: min(560px, 92vw);
+  max-height: 90vh;
+  overflow-y: auto;
+
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 22px 22px 18px;
+
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+  position: relative;
+
+  animation: modal-pop 0.18s ease-out;
+}
+
+
+.modal-content{
+  width:min(560px,92vw);
+  background:#fff;
+  border-radius:18px;
+  padding:22px 22px 18px;
+  box-shadow:0 24px 60px rgba(0,0,0,.25);
+  position:relative;
+}
+
+.close-x{
+  position:absolute;
+  top:10px;
+  right:12px;
+  width:38px;
+  height:38px;
+  border:none;
+  background:transparent;
+  font-size:28px;
+  cursor:pointer;
+  opacity:.7;
+}
+.close-x:hover{opacity:1;}
+
+.modal-title{
+  margin:6px 0 14px;
+  font-size:1.15rem;
+  font-weight:700;
+  color:#1f1f1f;
+}
+
+.modal-form{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.form-group{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.form-group label{
+  font-size:.9rem;
+  font-weight:600;
+  color:#2a2a2a;
+}
+
+.modal-form input,
+.modal-form select{
+  width:100%;
+  height:44px;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid rgba(0,0,0,.14);
+  outline:none;
+  font-size:.95rem;
+  background:#fff;
+}
+
+.modal-form input:focus,
+.modal-form select:focus{
+  border-color:rgba(139,26,48,.55);
+  box-shadow:0 0 0 4px rgba(139,26,48,.12);
+}
+
+.form-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+
+.error-text{
+  background:rgba(255,0,0,.08);
+  color:#b00020;
+  border:1px solid rgba(176,0,32,.25);
+  padding:10px 12px;
+  border-radius:12px;
+  font-size:.9rem;
+}
+
+.modal-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  margin-top:4px;
+}
+
+.btn-cancel,
+.btn-submit{
+  height:42px;
+  padding:0 14px;
+  border-radius:12px;
+  font-weight:700;
+  border:none;
+  cursor:pointer;
+}
+
+.btn-cancel{
+  background:#f2f2f2;
+  color:#222;
+}
+
+.btn-submit{
+  background:linear-gradient(135deg,#8b1a30 0%,#a02a42 100%);
+  color:#fff;
+  box-shadow:0 10px 22px rgba(139,26,48,.22);
+}
+
+@media (max-width:520px){
+  .form-row{grid-template-columns:1fr;}
+}
+
+@keyframes modal-pop {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

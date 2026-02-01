@@ -23,22 +23,22 @@ class User(db.Model):
     __tablename__ = "user"
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(
-        String(50), 
-        unique=True, 
+        String(50),
+        unique=True,
         nullable=False
         )
     email: Mapped[str] = mapped_column(
         String(120),
             unique=True,
             nullable=False)
-    password: Mapped[str] = mapped_column( 
+    password: Mapped[str] = mapped_column(
         String(255),
         nullable=False)
     is_active: Mapped[bool] = mapped_column(
         Boolean(),
             nullable=False,
             default=True)
-    
+
     events = db.relationship(
         "Event",
         secondary=user_event,
@@ -70,8 +70,8 @@ class User(db.Model):
             "is_active": self.is_active,
         }
 
-#---- EVENT MODEL ----#  
-    
+#---- EVENT MODEL ----#
+
 class Event(db.Model):
     __tablename__ = "event"
 
@@ -97,7 +97,7 @@ class Event(db.Model):
             "category": self.category,
             "location": self.location
         }
-    
+
 #---- BOOK MODEL ----#
 class Book(db.Model):
     __tablename__ = "book"
