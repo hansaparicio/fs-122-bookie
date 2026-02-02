@@ -963,6 +963,7 @@ def get_random_book():
         random_item = random.choice(items)
         vi = random_item.get("volumeInfo", {}) or {}
         img = (vi.get("imageLinks", {}) or {})
+        sale_info = (random_item.get("saleInfo", {}) or {})
 
         isbn = None
         identifiers = vi.get("industryIdentifiers", []) or []
@@ -976,6 +977,10 @@ def get_random_book():
                         isbn = ident.get("identifier")
                         break
 
+        # Enlaces útiles
+        google_books_url = vi.get("infoLink") or vi.get("previewLink") or vi.get("canonicalVolumeLink")
+        buy_link = sale_info.get("buyLink")
+
         book_data = {
             "id": random_item.get("id"),
             "title": vi.get("title"),
@@ -986,7 +991,9 @@ def get_random_book():
             "description": vi.get("description", ""),
             "categories": vi.get("categories", []),
             "pageCount": vi.get("pageCount"),
-            "language": vi.get("language")
+            "language": vi.get("language"),
+            "googleBooksUrl": google_books_url,
+            "buyLink": buy_link,
         }
 
         return jsonify(book_data), 200

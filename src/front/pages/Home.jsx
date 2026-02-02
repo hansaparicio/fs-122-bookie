@@ -306,6 +306,13 @@ export const Home = () => {
     window.dispatchEvent(new Event("local-storage-changed"));
   };
 
+  const handleGoToAIChat = (book) => {
+    if (book) {
+      handleSelectBook(book);
+    }
+    navigate("/ai-chat");
+  };
+
   const handleOpenChat = async () => {
     setUiMessage(null);
 
@@ -629,6 +636,7 @@ export const Home = () => {
           onClose={() => setIsLibraryOpen(false)}
           onSelect={handleSelectBook}
           onAddToLibrary={addBookToLibrary}
+          onGoToAIChat={handleGoToAIChat}
           mode={modalMode}
           selectedBook={selectedBook}
         />

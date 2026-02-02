@@ -11,6 +11,7 @@ export default function BookLibraryModal({
   selectedBook,
   mode = "library",
   onAddToLibrary,
+  onGoToAIChat,
 }) {
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
@@ -113,7 +114,6 @@ export default function BookLibraryModal({
     };
     setPicked(mapped);
     onSelect?.(mapped);
-    onClose?.();
   };
 
   const handleAdd = async () => {
@@ -266,6 +266,18 @@ export default function BookLibraryModal({
           <div className="blm-actions">
             <button className="blm-btn blm-btn-ghost" onClick={onClose}>
               Close
+            </button>
+            <button
+              className="blm-btn blm-btn-primary"
+              type="button"
+              disabled={!effectiveSelected}
+              onClick={() => {
+                if (!effectiveSelected) return;
+                onGoToAIChat?.(effectiveSelected);
+                onClose?.();
+              }}
+            >
+              Go to AI Chat
             </button>
             <button className="blm-btn blm-btn-wine" onClick={handleAdd} disabled={!canAdd}>
               {saving ? "Adding..." : "Add to library"}
