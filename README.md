@@ -1,81 +1,94 @@
-# WebApp boilerplate with React JS and Flask API
+## Bookie – Club de lectura social con chat por libro
 
-Build web applications using React.js for the front end and python/flask for your backend API.
+Bookie es una aplicación web que combina **clubes de lectura**, **eventos** y **chat en tiempo real** organizado por libro (ISBN).  
+La idea: cada libro tiene su **propio canal de chat**, compartido por todas las personas que lo están leyendo.
 
-- Documentation can be found here: https://4geeks.com/docs/start/react-flask-template
-- Here is a video on [how to use this template](https://www.loom.com/share/f37c6838b3f1496c95111e515e83dd9b)
-- Integrated with Pipenv for package managing.
-- Fast deployment to Render [in just a few steps here](https://4geeks.com/docs/start/deploy-to-render-com).
-- Use of .env file.
-- SQLAlchemy integration for database abstraction.
+---
 
-### 1) Installation:
+### 🧩 Tecnologías principales
 
-> If you use Github Codespaces (recommended) or Gitpod this template will already come with Python, Node and the Posgres Database installed. If you are working locally make sure to install Python 3.10, Node 
+- **Frontend**: React + Vite, React Router, Bootstrap, Stream Chat React.
+- **Backend**: Python + Flask, SQLAlchemy, JWT para auth, Stream Chat (SDK de servidor).
+- **Base de datos**: SQLite en desarrollo, Postgres en despliegue.
 
-It is recomended to install the backend first, make sure you have Python 3.10, Pipenv and a database engine (Posgress recomended)
+---
 
-1. Install the python packages: `$ pipenv install`
-2. Create a .env file based on the .env.example: `$ cp .env.example .env`
-3. Install your database engine and create your database, depending on your database you have to create a DATABASE_URL variable with one of the possible values, make sure you replace the valudes with your database information:
+### ⚙️ Puesta en marcha rápida (local)
 
-| Engine    | DATABASE_URL                                        |
-| --------- | --------------------------------------------------- |
-| SQLite    | sqlite:////test.db                                  |
-| MySQL     | mysql://username:password@localhost:port/example    |
-| Postgress | postgres://username:password@localhost:5432/example |
+#### 1. Backend (Flask)
 
-4. Migrate the migrations: `$ pipenv run migrate` (skip if you have not made changes to the models on the `./src/api/models.py`)
-5. Run the migrations: `$ pipenv run upgrade`
-6. Run the application: `$ pipenv run start`
-
-> Note: Codespaces users can connect to psql by typing: `psql -h localhost -U gitpod example`
-
-### Undo a migration
-
-You are also able to undo a migration by running
-
-```sh
-$ pipenv run downgrade
+```bash
+cd src/api
+pipenv install          # instala dependencias
+cp .env.example .env    # copia el ejemplo y edita tus variables
+pipenv run migrate      # genera migraciones (si hace falta)
+pipenv run upgrade      # aplica migraciones
+pipenv run start        # lanza el backend (por defecto http://localhost:3001)
 ```
 
-### Backend Populate Table Users
+Variables importantes en el `.env` del backend:
 
-To insert test users in the database execute the following command:
+- `DATABASE_URL` – conexión a la base de datos.
+- `JWT_SECRET_KEY` – clave usada para firmar los tokens.
+- `STREAM_API_KEY` y `STREAM_API_SECRET` – credenciales de Stream Chat.
 
-```sh
-$ flask insert-test-users 5
+#### 2. Frontend (React)
+
+```bash
+cd src/front
+npm install
+npm run dev   # o npm run start
 ```
 
-And you will see the following message:
+En el `.env` del frontend (raíz del proyecto) asegúrate de tener algo como:
 
-```
-  Creating test users
-  test_user1@test.com created.
-  test_user2@test.com created.
-  test_user3@test.com created.
-  test_user4@test.com created.
-  test_user5@test.com created.
-  Users created successfully!
+```bash
+VITE_BACKEND_URL=http://localhost:3001
+VITE_STREAM_API_KEY=<tu_api_key_de_stream>
 ```
 
-### **Important note for the database and the data inside it**
+---
 
-Every Github codespace environment will have **its own database**, so if you're working with more people eveyone will have a different database and different records inside it. This data **will be lost**, so don't spend too much time manually creating records for testing, instead, you can automate adding records to your database by editing ```commands.py``` file inside ```/src/api``` folder. Edit line 32 function ```insert_test_data``` to insert the data according to your model (use the function ```insert_test_users``` above as an example). Then, all you need to do is run ```pipenv run insert-test-data```.
+### 🔐 Autenticación y chat
 
-### Front-End Manual Installation:
+- El usuario inicia sesión y recibe un **access token JWT** y un **stream_token**.
+- El frontend guarda esos valores en `localStorage` y los envía en el header `Authorization: Bearer <token>` a las rutas protegidas (`/api/chat/*`, `/api/library/*`, etc.).
+- Cada canal de chat por libro usa un id de la forma:
+  - `book-isbn-<ISBN_NORMALIZADO>`
+- El backend expone, entre otros, estos endpoints de chat:
+  - `GET /api/stream-token` – genera el token de Stream para el usuario.
+  - `POST /api/chat/create-or-join-channel-by-isbn` – crea o une al canal de un libro por ISBN.
+  - `GET /api/chat/channel-members-by-isbn?isbn=...` – devuelve miembros del canal (id, name, image) para mostrar avatares.
 
--   Make sure you are using node version 20 and that you have already successfully installed and runned the backend.
+---
 
-1. Install the packages: `$ npm install`
-2. Start coding! start the webpack dev server `$ npm run start`
+### 📚 Funcionalidades principales
 
-## Publish your website!
+- **Home / Reading Now**
+  - Mostrar el libro seleccionado (portada, título, ISBN).
+  - Abrir el chat asociado a ese libro con **Open Chat**.
+  - Ver en **Like-minded readers** las fotos de perfil reales de quienes están/han estado en el chat de ese libro.
 
-This boilerplate it's 100% read to deploy with Render.com and Heroku in a matter of minutes. Please read the [official documentation about it](https://4geeks.com/docs/start/deploy-to-render-com).
+- **Library**
+  - Buscar libros (Google Books).
+  - Añadir libros a la biblioteca del usuario (evitando duplicados).
 
-### Contributors
+- **Events**
+  - Crear eventos de lectura (clubs, meetups, etc.).
+  - Ver lista de próximos eventos con fecha, hora y categoría.
 
-This template was built as part of the 4Geeks Academy [Coding Bootcamp](https://4geeksacademy.com/us/coding-bootcamp) by [Alejandro Sanchez](https://twitter.com/alesanchezr) and many other contributors. Find out more about our [Full Stack Developer Course](https://4geeksacademy.com/us/coding-bootcamps/part-time-full-stack-developer), and [Data Science Bootcamp](https://4geeksacademy.com/us/coding-bootcamps/datascience-machine-learning).
+- **AI Chat (recomendador)**
+  - Bot conversacional que recomienda libros según tus gustos.
 
-You can find other templates and resources like this at the [school github page](https://github.com/4geeksacademy/).
+---
+
+### 🚀 Despliegue
+
+El repositorio incluye configuración para desplegar en **Render** u otros servicios compatibles con Docker:
+
+- `Dockerfile.render`
+- `render.yaml`
+- `requirements.txt`
+
+Adapta esas configuraciones a tu entorno y apunta `VITE_BACKEND_URL` al dominio/puerto del backend desplegado.
+
