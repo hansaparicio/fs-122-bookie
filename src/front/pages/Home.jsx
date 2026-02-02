@@ -24,6 +24,7 @@ export const Home = () => {
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [modalMode, setModalMode] = useState("library");
   const [selectedBook, setSelectedBook] = useState(null);
 
   const [uiMessage, setUiMessage] = useState(null);
@@ -96,7 +97,7 @@ export const Home = () => {
     try {
       const saved = JSON.parse(localStorage.getItem("event_global_list") || "[]");
       if (Array.isArray(saved) && saved.length) return saved;
-    } catch (e) {}
+    } catch (e) { }
     if (Array.isArray(store.eventGlobalList) && store.eventGlobalList.length) return store.eventGlobalList;
     return store.initialEventList || [];
   };
@@ -245,19 +246,7 @@ export const Home = () => {
       localStorage.setItem("event_global_list", JSON.stringify(next));
       window.dispatchEvent(new Event("local-storage-changed"));
       setEventList(next);
-    } catch (e) {}
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    localStorage.removeItem("user_data");
-    localStorage.removeItem("stream_token");
-    localStorage.removeItem("selected_book");
-    localStorage.removeItem("token");
-    localStorage.removeItem("selectedBook");
-    localStorage.removeItem("userAvatar");
-    navigate("/");
+    } catch (e) { }
   };
 
   const handleLogout = () => {
@@ -529,9 +518,8 @@ export const Home = () => {
               {eventList.map((ev, index) => (
                 <div className="col-md-6" key={ev.id || index}>
                   <div
-                    className={`card border-0 shadow-sm p-3 d-flex flex-row align-items-center event-card mb-card ${
-                      enableBorderGlow ? "mb-border-glow" : ""
-                    }`}
+                    className={`card border-0 shadow-sm p-3 d-flex flex-row align-items-center event-card mb-card ${enableBorderGlow ? "mb-border-glow" : ""
+                      }`}
                     style={{ borderRadius: "15px" }}
                   >
                     <div
@@ -590,15 +578,7 @@ export const Home = () => {
 
 
 
-            <div className="d-flex justify-content-center mt-4">
-              <button
-                onClick={handleLogout}
-                className="btn btn-outline-wine rounded-pill px-4 py-2 fw-bold"
-                style={{ fontSize: "0.9rem" }}
-              >
-                Log Out
-              </button>
-            </div>
+
 
             <CreateEventModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleAddEvent} />
 
@@ -615,6 +595,8 @@ export const Home = () => {
           onClose={() => setIsLibraryOpen(false)}
           onSelect={handleSelectBook}
           onAddToLibrary={addBookToLibrary}
+          mode={modalMode}
+          selectedBook={selectedBook}
         />
       </div>
     </div>

@@ -6,6 +6,8 @@ import EventDetailsModal from "../components/EventDetailsModal";
 import useGlobalReducer from "../hooks/useGlobalReducer";
 import "./Events.css";
 
+const LIBRARIES = ["places"];
+
 export const Events = () => {
   const { store, dispatch } = useGlobalReducer();
 
@@ -62,7 +64,7 @@ export const Events = () => {
   const { isLoaded, loadError } = useJsApiLoader({
     id: "google-maps-script",
     googleMapsApiKey: apiKey || "",
-    libraries: ["places"],
+    libraries: LIBRARIES,
     language: "es",
     region: "ES",
   });

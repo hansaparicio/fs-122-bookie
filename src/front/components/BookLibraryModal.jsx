@@ -123,11 +123,10 @@ export default function BookLibraryModal({
     };
     setPicked(mapped);
     setSelected(mapped);
-    if (mode === "library") {
-      return;
+    if (mode === "prologue") {
+      onSelect?.(mapped);
+      onClose?.();
     }
-    onSelect?.(mapped);
-    onClose?.();
   };
 
   const handleAdd = async () => {
@@ -273,7 +272,7 @@ export default function BookLibraryModal({
 
         <div className="blm-footer">
           <div className="blm-selected">
-            {selected?.title ? `Selected: ${selected.title}` : "Select a book to add it"}
+            {selected?.title ? `Selected: ${selected.title}` : "Select a book or add to library"}
           </div>
           <div className="blm-actions">
             <button className="blm-btn blm-btn-ghost" onClick={onClose}>
