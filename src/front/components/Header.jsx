@@ -34,13 +34,6 @@ export const Header = () => {
             </div>
 
             <div className="header-right-side">
-                <button
-                    type="button"
-                    className="ai-chat-btn"
-                    onClick={() => navigate("/ai-chat")}
-                >
-                    AI Chat
-                </button>
                 <PillNav
                     logo={safeAvatar}
                     logoAlt={username}

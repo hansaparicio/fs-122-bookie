@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "./Profile.css";
-import { PencilIcon, BookOpenIcon, TagIcon, TrashIcon, CalendarIcon } from "@heroicons/react/24/outline";
+import { PencilIcon, BookOpenIcon, TagIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useUser } from "../components/UserContext";
 import MyLibraryPickerModal from "../components/MyLibraryPickerModal";
 
@@ -17,15 +17,11 @@ export const Profile = () => {
 
   const [aboutText, setAboutText] = useState("");
   const [top3, setTop3] = useState([null, null, null]);
-  const [activeSlot, setActiveSlot] = useState(null);
   const [favoriteGenres, setFavoriteGenres] = useState([]);
   const [newGenre, setNewGenre] = useState("");
 
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
-  const [pickerMode, setPickerMode] = useState("top3");
-
-  const [userEvents, setUserEvents] = useState([]);
-  const [loadingEvents, setLoadingEvents] = useState(false);
+  const [pickerMode, setPickerMode] = useState("reading");
 
   const normalizeIsbn = (isbn) => (isbn || "").replaceAll("-", "").replaceAll(" ", "").toUpperCase();
 
@@ -121,26 +117,6 @@ export const Profile = () => {
     }
   };
 
-  const fetchUserEvents = async () => {
-    const userId = getUserId();
-    if (!userId) return;
-
-    setLoadingEvents(true);
-    try {
-      const resp = await fetch(`${API_BASE}/api/users/${userId}/events`);
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        throw new Error(err?.msg || err?.message || "Error fetching events");
-      }
-      const data = await resp.json();
-      setUserEvents(Array.isArray(data) ? data : []);
-    } catch {
-      setUserEvents([]);
-    } finally {
-      setLoadingEvents(false);
-    }
-  };
-
   const removeFromLibrary = async (isbn) => {
     const userId = getUserId();
     if (!userId) return;
@@ -169,45 +145,11 @@ export const Profile = () => {
     }
   };
 
-  const pickTop3Book = (item) => {
-    if (activeSlot === null) return;
-
-    const mapped = {
-      id: item.id || null,
-      title: item.title,
-      authors: getAuthorsArray(item),
-      publisher: item.publisher || null,
-      thumbnail: item.thumbnail || null,
-      isbn: normalizeIsbn(item.isbn),
-    };
-
-    setTop3((prev) => {
-      const next = [...prev];
-      next[activeSlot] = mapped;
-      savePrefs({ aboutText, top3: next, favoriteGenres });
-      return next;
-    });
-
-    setActiveSlot(null);
-    setIsBookModalOpen(false);
-  };
-
   const handleBookSelect = (book) => {
     if (pickerMode === "reading") {
       setCurrentlyReading(book);
       setIsBookModalOpen(false);
-      return;
     }
-    if (activeSlot !== null) pickTop3Book(book);
-  };
-
-  const clearTop3Slot = (idx) => {
-    setTop3((prev) => {
-      const next = [...prev];
-      next[idx] = null;
-      savePrefs({ aboutText, top3: next, favoriteGenres });
-      return next;
-    });
   };
 
   const onChangeAbout = (val) => {
@@ -266,7 +208,6 @@ export const Profile = () => {
 
     setReadingNow(loadReadingNow());
     fetchLibrary();
-    fetchUserEvents();
 
     const prefs = loadPrefs();
     if (prefs?.aboutText !== undefined) setAboutText(prefs.aboutText);
@@ -320,88 +261,6 @@ export const Profile = () => {
     widget.open();
   };
 
-  const TopCard = ({ idx }) => {
-    const b = top3[idx];
-    return (
-      <div className="card border-0 shadow-sm p-3" style={{ borderRadius: 18 }}>
-        <div className="d-flex gap-3 align-items-start">
-          {b ? (
-            <>
-              <img
-                src={b.thumbnail || "https://via.placeholder.com/80x110"}
-                alt={b.title}
-                style={{ width: 70, height: 95, objectFit: "cover", borderRadius: 10 }}
-              />
-              <div className="flex-grow-1">
-                <div className="fw-bold" style={{ color: "#231B59", fontSize: 11 }}>
-                  Top {idx + 1}
-                </div>
-                <div className="fw-bold" style={{ fontSize: 14, color: "#231B59" }}>
-                  {b.title}
-                </div>
-                <div className="text-muted" style={{ fontSize: 12 }}>
-                  {b.authors.join(", ")}
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              <div
-                style={{
-                  width: 70,
-                  height: 95,
-                  backgroundColor: "#f0f0f0",
-                  borderRadius: 10,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                📚
-              </div>
-              <div className="flex-grow-1">
-                <div className="fw-bold">Top {idx + 1}</div>
-                <div className="text-muted">Pick a book</div>
-              </div>
-            </>
-          )}
-          <div className="d-flex flex-column gap-2">
-            <button
-              className="btn btn-sm"
-              onClick={() => {
-                setPickerMode("top3");
-                setActiveSlot(idx);
-                setIsBookModalOpen(true);
-              }}
-            >
-              {b ? "Change" : "Add"}
-            </button>
-            {b && (
-              <button className="btn btn-sm btn-outline-danger" onClick={() => clearTop3Slot(idx)}>
-                <TrashIcon style={{ width: 14 }} /> Remove
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const formatEventDate = (ev) => {
-    const raw = ev?.datetimeISO || ev?.datetime || ev?.date_time || null;
-    if (raw) {
-      const d = new Date(raw);
-      if (!Number.isNaN(d.getTime())) {
-        const date = d.toLocaleDateString("es-ES", { weekday: "short", day: "2-digit", month: "short" });
-        const time = d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
-        return { date, time };
-      }
-    }
-    const date = ev?.date || "-";
-    const time = ev?.time || "";
-    return { date, time };
-  };
-
   return (
     <div className="profile-main-container" style={{ backgroundColor: "#E5E4D7", minHeight: "100vh", display: "flex" }}>
       <div className="profile-content-scroll" style={{ flexGrow: 1, padding: "40px" }}>
@@ -425,68 +284,6 @@ export const Profile = () => {
                 <TagIcon style={{ width: 22 }} /> About Me
               </h5>
               <textarea className="form-control" rows={5} value={aboutText} onChange={(e) => onChangeAbout(e.target.value)} />
-              <div className="mt-4">
-                <h6 className="fw-bold">Top 3 Favorite Books</h6>
-                <div className="d-flex flex-column gap-3 mt-3">
-                  <TopCard idx={0} />
-                  <TopCard idx={1} />
-                  <TopCard idx={2} />
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <h6 className="fw-bold">
-                  <CalendarIcon style={{ width: 20 }} /> My Events
-                </h6>
-
-                {loadingEvents ? (
-                  <p className="text-muted mb-0">Loading events...</p>
-                ) : userEvents.length === 0 ? (
-                  <p className="text-muted mb-0">You are not signed up for any events yet.</p>
-                ) : (
-                  <div className="d-flex flex-column gap-2 mt-3">
-                    {userEvents.map((ev, idx) => {
-                      const { date, time } = formatEventDate(ev);
-                      const title = ev?.title || ev?.name || "Event";
-                      const place = ev?.place || ev?.location || ev?.address || "";
-                      const icon = ev?.icon || ev?.category || "📅";
-                      return (
-                        <div
-                          key={ev?.id ?? ev?.event_id ?? idx}
-                          className="card border-0 shadow-sm p-3"
-                          style={{ borderRadius: 18 }}
-                        >
-                          <div className="d-flex align-items-start gap-3">
-                            <div
-                              className="rounded-circle d-flex align-items-center justify-content-center"
-                              style={{
-                                width: 44,
-                                height: 44,
-                                background: "rgba(139, 26, 48, 0.10)",
-                                fontSize: 20,
-                                flexShrink: 0,
-                              }}
-                            >
-                              {icon}
-                            </div>
-                            <div className="flex-grow-1">
-                              <div className="fw-bold" style={{ color: "#231B59" }}>
-                                {title}
-                              </div>
-                              <div className="text-muted" style={{ fontSize: 13 }}>
-                                {place}
-                              </div>
-                              <div className="text-muted" style={{ fontSize: 12 }}>
-                                {date}{time ? ` · ${time}` : ""}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
             </div>
           </div>
 
@@ -549,8 +346,7 @@ export const Profile = () => {
         isOpen={isBookModalOpen}
         onClose={() => {
           setIsBookModalOpen(false);
-          setActiveSlot(null);
-          setPickerMode("top3");
+          setPickerMode("reading");
         }}
         books={libraryBooks}
         onSelect={handleBookSelect}

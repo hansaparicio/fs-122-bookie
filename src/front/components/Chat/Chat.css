@@ -169,9 +169,9 @@
 }
 
 .str-chat__send-button::after {
-  content: "Send";
+  content: "➤";
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 1.1rem;
   color: white !important;
 }
 

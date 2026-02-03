@@ -72,7 +72,9 @@ export const Aboutus = () => {
                             onClick={() => setSelectedMember(member)}
                             style={{ cursor: 'pointer' }}
                         >
-                            <div className="member-avatar">👤</div>
+                            <div className="member-avatar">
+                                <img src={member.photo} alt={member.name} />
+                            </div>
                             <div className="blur-text-wrapper">
                                 <p className="member-name fw-bold m-0">{member.name}</p>
                             </div>

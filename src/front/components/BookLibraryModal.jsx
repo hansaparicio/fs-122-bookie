@@ -270,10 +270,8 @@ export default function BookLibraryModal({
             <button
               className="blm-btn blm-btn-primary"
               type="button"
-              disabled={!effectiveSelected}
               onClick={() => {
-                if (!effectiveSelected) return;
-                onGoToAIChat?.(effectiveSelected);
+                onGoToAIChat?.(effectiveSelected || null);
                 onClose?.();
               }}
             >
