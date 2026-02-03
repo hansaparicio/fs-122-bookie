@@ -18,6 +18,22 @@ const AIChat = () => {
     const backendUrl = import.meta.env.VITE_BACKEND_URL;
     const API_BASE = `${backendUrl?.replace(/\/$/, "") || ""}/api`;
 
+    // Convierte URLs en texto a enlaces clicables (abren en nueva pestaña)
+    const linkify = (text) => {
+        if (!text || typeof text !== "string") return text;
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        const parts = text.split(urlRegex);
+        return parts.map((part, i) =>
+            /^https?:\/\/\S+$/.test(part) ? (
+                <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="ai-chat-link">
+                    {part}
+                </a>
+            ) : (
+                part
+            )
+        );
+    };
+
     // Auto-scroll al final de los mensajes
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -202,23 +218,42 @@ const AIChat = () => {
             }
 
             const book = await response.json();
-            
+
             // Formatear información del libro
             const authors = book.authors ? book.authors.join(", ") : "Autor desconocido";
-            const description = book.description 
-                ? (book.description.length > 300 
-                    ? book.description.substring(0, 300) + "..." 
+            const description = book.description
+                ? (book.description.length > 300
+                    ? book.description.substring(0, 300) + "..."
                     : book.description)
                 : "Sin descripción disponible";
-            
-            const bookInfo = `📚 **${book.title}**\n\n` +
+
+            // Enlaces: priorizamos lo que venga del backend y añadimos fallback sencillo
+            const googleBooksUrl =
+                book.googleBooksUrl ||
+                (book.id ? `https://books.google.com/books?id=${encodeURIComponent(book.id)}` : null);
+
+            const buyLink =
+                book.buyLink ||
+                (book.title
+                    ? `https://www.google.com/search?q=${encodeURIComponent((book.title || "") + " " + (book.isbn || "") + " comprar libro")}`
+                    : null);
+
+            let bookInfo =
+                `📚 **${book.title}**\n\n` +
                 `👤 Autor(es): ${authors}\n\n` +
                 (book.publishedDate ? `📅 Publicado: ${book.publishedDate}\n\n` : "") +
-                (book.categories && book.categories.length > 0 
-                    ? `🏷️ Géneros: ${book.categories.join(", ")}\n\n` 
+                (book.categories && book.categories.length > 0
+                    ? `🏷️ Géneros: ${book.categories.join(", ")}\n\n`
                     : "") +
                 (book.pageCount ? `📖 Páginas: ${book.pageCount}\n\n` : "") +
-                `📝 Descripción: ${description}`;
+                `📝 Descripción: ${description}\n\n`;
+
+            if (googleBooksUrl) {
+                bookInfo += `🔎 Más info en Google Books: ${googleBooksUrl}\n`;
+            }
+            if (buyLink) {
+                bookInfo += `🛒 Comprar: ${buyLink}`;
+            }
 
             // Enviar como mensaje del asistente
             setMessages(prev => [...prev, {
@@ -259,18 +294,18 @@ const AIChat = () => {
                                 <>
                                     <div className="message-synopsis">
                                         {msg.content.split("---")[0].trim().split("\n").map((line, i) => (
-                                            <p key={i}>{line}</p>
+                                            <p key={i}>{linkify(line)}</p>
                                         ))}
                                     </div>
                                     <div className="message-info">
                                         {msg.content.split("---").slice(1).join("---").trim().split("\n").filter(Boolean).map((line, i) => (
-                                            <p key={i}>{line.trim()}</p>
+                                            <p key={i}>{linkify(line.trim())}</p>
                                         ))}
                                     </div>
                                 </>
                             ) : (
                                 msg.content.split("\n").map((line, i) => (
-                                    <p key={i}>{line}</p>
+                                    <p key={i}>{linkify(line)}</p>
                                 ))
                             )}
                         </div>

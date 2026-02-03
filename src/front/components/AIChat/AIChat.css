@@ -131,6 +131,17 @@
     margin: 0 0 4px 0;
 }
 
+/* Enlaces clicables en mensajes (Sorpréndeme, etc.) */
+.message-content .ai-chat-link {
+    color: inherit;
+    text-decoration: underline;
+    word-break: break-all;
+}
+
+.message-content .ai-chat-link:hover {
+    opacity: 0.9;
+}
+
 /* Typing indicator - color primario Bookie */
 .typing-indicator {
     display: flex;

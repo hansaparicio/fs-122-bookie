@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import CreateEventModal from "../components/CreateEventModal";
 import EventDetailsModal from "../components/EventDetailsModal";
 import BookLibraryModal from "../components/BookLibraryModal";
+import MyLibraryPickerModal from "../components/MyLibraryPickerModal";
 import "./Home.css";
 import portadaLibro from "../assets/img/portada_Libro.png";
 import useGlobalReducer from "../hooks/useGlobalReducer";
@@ -20,7 +21,7 @@ export const Home = () => {
   const [selectedEvent, setSelectedEvent] = useState(null);
 
   const navigate = useNavigate();
-  const { updateProfile } = useUser();
+  const { updateProfile, userData } = useUser();
 
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
@@ -32,6 +33,13 @@ export const Home = () => {
   const [chatLoading, setChatLoading] = useState(false);
   const [activeReaders, setActiveReaders] = useState([]);
 
+  const [libraryBooks, setLibraryBooks] = useState([]);
+  const [loadingLibrary, setLoadingLibrary] = useState(false);
+  const [top3, setTop3] = useState([null, null, null]);
+  const [activeSlot, setActiveSlot] = useState(null);
+  const [isBookModalOpen, setIsBookModalOpen] = useState(false);
+  const [pickerMode, setPickerMode] = useState("top3");
+
   const bentoRef = useRef(null);
   const spotlightRef = useRef(null);
 
@@ -41,6 +49,97 @@ export const Home = () => {
   const clickEffect = true;
   const spotlightRadius = 730;
   const glowColor = "132, 0, 255";
+
+  const getUserId = () => {
+    const fromCtx = userData?.id;
+    if (fromCtx) return fromCtx;
+    const saved = JSON.parse(localStorage.getItem("user_data") || "null");
+    return saved?.id || null;
+  };
+
+  const getPrefsKey = () => {
+    const uid = getUserId();
+    return uid ? `profile_prefs_${uid}` : null;
+  };
+
+  const loadPrefs = () => {
+    const key = getPrefsKey();
+    if (!key) return null;
+    try {
+      return JSON.parse(localStorage.getItem(key) || "null");
+    } catch {
+      return null;
+    }
+  };
+
+  const savePrefs = (next) => {
+    const key = getPrefsKey();
+    if (!key) return;
+    try {
+      localStorage.setItem(key, JSON.stringify(next));
+    } catch {}
+  };
+
+  const getAuthorsArray = (book) => {
+    if (!book) return [];
+    if (Array.isArray(book.authors)) return book.authors;
+    if (book.author) return String(book.author).split(";").map((s) => s.trim()).filter(Boolean);
+    return [];
+  };
+
+  const fetchLibrary = async () => {
+    const userId = getUserId();
+    if (!userId || !backendUrl) return;
+    setLoadingLibrary(true);
+    try {
+      const resp = await fetch(`${backendUrl}/api/library/${userId}/books`);
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err?.msg || err?.message || "Error fetching library");
+      }
+      const data = await resp.json();
+      setLibraryBooks(Array.isArray(data) ? data : []);
+    } catch {
+      setLibraryBooks([]);
+    } finally {
+      setLoadingLibrary(false);
+    }
+  };
+
+  const pickTop3Book = (item) => {
+    if (activeSlot === null) return;
+    const mapped = {
+      id: item.id || null,
+      title: item.title,
+      authors: getAuthorsArray(item),
+      publisher: item.publisher || null,
+      thumbnail: item.thumbnail || null,
+      isbn: normalizeIsbn(item.isbn),
+    };
+    const prefs = loadPrefs() || {};
+    setTop3((prev) => {
+      const next = [...prev];
+      next[activeSlot] = mapped;
+      savePrefs({ ...prefs, top3: next });
+      return next;
+    });
+    setActiveSlot(null);
+    setIsBookModalOpen(false);
+  };
+
+  const clearTop3Slot = (idx) => {
+    const prefs = loadPrefs() || {};
+    setTop3((prev) => {
+      const next = [...prev];
+      next[idx] = null;
+      savePrefs({ ...prefs, top3: next });
+      return next;
+    });
+  };
+
+  const handleBookSelect = (book) => {
+    if (activeSlot !== null) pickTop3Book(book);
+  };
 
   const addBookToLibrary = async (book) => {
     const user = JSON.parse(localStorage.getItem("user_data"));
@@ -88,6 +187,7 @@ export const Home = () => {
       }
 
       setUiMessage({ type: "success", text: "Libro añadido a tu biblioteca." });
+      fetchLibrary();
     } catch (e) {
       setUiMessage({ type: "danger", text: e.message });
     }
@@ -231,6 +331,16 @@ export const Home = () => {
   }, []);
 
   useEffect(() => {
+    const uid = getUserId();
+    if (!uid) return;
+    fetchLibrary();
+    const prefs = loadPrefs();
+    if (prefs && Array.isArray(prefs.top3)) {
+      setTop3([prefs.top3[0] || null, prefs.top3[1] || null, prefs.top3[2] || null]);
+    }
+  }, [userData?.id]);
+
+  useEffect(() => {
     const isbn = normalizeIsbn(selectedBook?.isbn);
     if (!isbn || !backendUrl) {
       setActiveReaders([]);
@@ -304,6 +414,13 @@ export const Home = () => {
     setUiMessage(null);
 
     window.dispatchEvent(new Event("local-storage-changed"));
+  };
+
+  const handleGoToAIChat = (book) => {
+    if (book) {
+      handleSelectBook(book);
+    }
+    navigate("/ai-chat");
   };
 
   const handleOpenChat = async () => {
@@ -401,9 +518,33 @@ export const Home = () => {
         <div className="row g-3 mx-0 home-row justify-content-center align-items-start">
           <div className="card-shadow col-12 col-lg-5 left-container">
             <section className="mb-5">
-              <h5 className="fw-bold mb-4 glitch-title" data-text="READING NOW">
-                READING NOW
-              </h5>
+              <div className="d-flex justify-content-between align-items-center mb-4">
+                <h5 className="fw-bold mb-0 glitch-title" data-text="READING NOW">
+                  READING NOW
+                </h5>
+                <button
+                  type="button"
+                  className="home-search-btn"
+                  onClick={openLibrary}
+                  aria-label="Buscar o cambiar libro"
+                  title="Buscar o cambiar libro"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.35-4.35" />
+                  </svg>
+                </button>
+              </div>
 
               {uiMessage && (
                 <div className={`alert alert-${uiMessage.type} py-2`} role="alert">
@@ -411,8 +552,7 @@ export const Home = () => {
                 </div>
               )}
 
-              <div className="d-flex gap-3 flex-wrap">
-                {/* ✅ LIBRO + BOTÓN "+" (sin romper estructura) */}
+              <div className="reading-now-row">
                 <div className="home-book-wrap">
                   <button
                     type="button"
@@ -437,19 +577,15 @@ export const Home = () => {
                       </div>
                     )}
                   </button>
-
-                  <button type="button" className="home-plus-btn" onClick={openLibrary} aria-label="Add book">
-                    +
-                  </button>
                 </div>
 
                 <div
-                  className={`card border-0 shadow-sm p-4 flex-grow-1 mb-card ${enableBorderGlow ? "mb-border-glow" : ""}`}
+                  className={`reading-readers-card card border-0 shadow-sm p-3 mb-card ${enableBorderGlow ? "mb-border-glow" : ""}`}
                   style={{ borderRadius: "var(--card-radius)" }}
                 >
-                  <h6 className="fw-bold">Like-minded readers</h6>
+                  <h6 className="fw-bold mb-2">Like-minded readers</h6>
 
-                  <div className="d-flex my-2 align-items-center">
+                  <div className="d-flex my-2 align-items-center flex-wrap gap-1">
                     {activeReaders.length > 0 ? (
                       activeReaders.slice(0, 6).map((user, i) => (
                         <img
@@ -461,9 +597,8 @@ export const Home = () => {
                           alt={user.name || user.id}
                           className="rounded-circle border border-white"
                           style={{
-                            width: "36px",
-                            height: "36px",
-                            marginLeft: i === 0 ? 0 : "-12px",
+                            width: "32px",
+                            height: "32px",
                             objectFit: "cover",
                             boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
                             border: "2px solid white",
@@ -477,17 +612,17 @@ export const Home = () => {
                         />
                       ))
                     ) : (
-                      <span className="small text-muted">Those who open the chat for this book will appear here</span>
+                      <span className="small text-muted">Those who open the chat will appear here</span>
                     )}
                   </div>
 
-                  <p className="small text-muted">
-                    {activeReaders.length === 0 && "Open the chat to join the conversation."}
+                  <p className="small text-muted mb-2">
+                    {activeReaders.length === 0 && "Open the chat to join."}
                     {activeReaders.length === 1 && "1 reader in this conversation."}
                     {activeReaders.length > 1 && `${activeReaders.length} readers in this conversation.`}
                   </p>
 
-                  <button className="btn btn-wine w-100 py-2 mt-auto rounded-3" onClick={handleOpenChat} disabled={chatLoading}>
+                  <button className="btn btn-wine w-100 py-2 rounded-3" onClick={handleOpenChat} disabled={chatLoading}>
                     {chatLoading ? "Opening..." : "Open Chat"}
                   </button>
                 </div>
@@ -495,63 +630,113 @@ export const Home = () => {
             </section>
 
             <section>
-              <h5 className="fw-bold mb-4 glitch-title" data-text="ACTIVITY FEED">
-                ACTIVITY FEED
+              <h5 className="fw-bold mb-4 glitch-title" data-text="TOP 3 FAVORITE BOOKS">
+                TOP 3 FAVORITE BOOKS
               </h5>
 
-              <div className="d-flex gap-3 flex-wrap">
-                <div
-                  className={`card border-0 shadow-sm p-3 bg-white mb-card ${enableBorderGlow ? "mb-border-glow" : ""}`}
-                  style={{ borderRadius: "var(--card-radius)", width: "190px", cursor: "pointer" }}
-                  onClick={() => navigate("/events")}
-                >
-                  <div className="d-flex align-items-center justify-content-between">
-                    <div className="rounded-circle p-2" style={{ backgroundColor: "rgba(139, 26, 48, 0.12)" }}>
-                      <span style={{ fontSize: "1.1rem" }}>📅</span>
+              <div className="d-flex flex-column gap-3">
+                {[0, 1, 2].map((idx) => {
+                  const b = top3[idx];
+                  return (
+                    <div
+                      key={idx}
+                      className={`card border-0 shadow-sm p-3 mb-card ${enableBorderGlow ? "mb-border-glow" : ""}`}
+                      style={{ borderRadius: "var(--card-radius)" }}
+                    >
+                      <div className="d-flex gap-3 align-items-start">
+                        {b ? (
+                          <>
+                            <img
+                              src={b.thumbnail || "https://via.placeholder.com/80x110"}
+                              alt={b.title}
+                              style={{ width: 60, height: 85, objectFit: "cover", borderRadius: 10 }}
+                            />
+                            <div className="flex-grow-1">
+                              <div className="fw-bold" style={{ color: "#231B59", fontSize: "0.7rem" }}>
+                                Top {idx + 1}
+                              </div>
+                              <div className="fw-bold" style={{ fontSize: "0.9rem", color: "#231B59" }}>
+                                {b.title}
+                              </div>
+                              <div className="text-muted" style={{ fontSize: "0.8rem" }}>
+                                {getAuthorsArray(b).join(", ")}
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div
+                              style={{
+                                width: 60,
+                                height: 85,
+                                backgroundColor: "#f0f0f0",
+                                borderRadius: 10,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              📚
+                            </div>
+                            <div className="flex-grow-1">
+                              <div className="fw-bold small">Top {idx + 1}</div>
+                              <div className="text-muted small">Elige un libro</div>
+                            </div>
+                          </>
+                        )}
+                        <div className="d-flex flex-column gap-2">
+                          <button
+                            className="btn btn-sm btn-wine"
+                            onClick={() => {
+                              setPickerMode("top3");
+                              setActiveSlot(idx);
+                              fetchLibrary();
+                              setIsBookModalOpen(true);
+                            }}
+                          >
+                            {b ? "Cambiar" : "Añadir"}
+                          </button>
+                          {b && (
+                            <button className="btn btn-sm btn-outline-danger" onClick={() => clearTop3Slot(idx)}>
+                              Quitar
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <span style={{ fontSize: "1.35rem", opacity: 0.25 }}>›</span>
-                  </div>
-
-                  <h6 className="fw-bold mt-2 mb-1" style={{ color: "#231B59" }}>
-                    Explore Events
-                  </h6>
-                  <p className="small text-muted mb-0" style={{ fontSize: "0.85rem" }}>
-                    Clubs & Meetups
-                  </p>
-                </div>
-
-                <div
-                  className={`card border-0 p-3 shadow-sm flex-grow-1 bg-white mb-card ${enableBorderGlow ? "mb-border-glow" : ""}`}
-                  style={{ borderRadius: "var(--card-radius)" }}
-                >
-                  <div className="card-body p-1 d-flex flex-column h-100 text-start">
-                    <p className="small fw-medium mb-2">" Aure and 12 others are talking about this chapter... "</p>
-                    <div className="text-end text-muted opacity-25 fs-4 mt-n2">"</div>
-                    <div className="d-flex justify-content-between mt-auto pt-2 border-top small text-muted">
-                      <span>❤️ 64k</span>
-                      <span>💬 Comment</span>
-                    </div>
-                  </div>
-                </div>
+                  );
+                })}
               </div>
             </section>
           </div>
 
           <div className="card-shadow col-12 col-lg-6 right-container">
-            <div className="d-flex justify-content-center mb-5">
-              <button
-                className="btn btn-outline-wine rounded-pill px-5 py-2 fw-bold"
-                onClick={() => setIsModalOpen(true)}
-                style={{ fontSize: "1rem", letterSpacing: "0.5px" }}
-              >
-                ✚ Create Your Event
-              </button>
-            </div>
-
             <div className="d-flex justify-content-between align-items-center mb-4">
-              <h4 className="fw-bold" id="events" style={{ color: "#231B59", letterSpacing: "0.5px" }}>
+              <h4 className="fw-bold mb-0" id="events" style={{ color: "#231B59", letterSpacing: "0.5px" }}>
                 Upcoming Events
               </h4>
+              <button
+                type="button"
+                className="home-add-event-btn"
+                onClick={() => setIsModalOpen(true)}
+                aria-label="Crear evento"
+                title="Create Your Event"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </button>
             </div>
 
             <div className="row g-3">
@@ -629,8 +814,20 @@ export const Home = () => {
           onClose={() => setIsLibraryOpen(false)}
           onSelect={handleSelectBook}
           onAddToLibrary={addBookToLibrary}
+          onGoToAIChat={handleGoToAIChat}
           mode={modalMode}
           selectedBook={selectedBook}
+        />
+
+        <MyLibraryPickerModal
+          isOpen={isBookModalOpen}
+          onClose={() => {
+            setIsBookModalOpen(false);
+            setActiveSlot(null);
+            setPickerMode("top3");
+          }}
+          books={libraryBooks}
+          onSelect={handleBookSelect}
         />
       </div>
     </div>

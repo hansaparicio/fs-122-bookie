@@ -44,10 +44,8 @@ export const router = createBrowserRouter(
         <Route path="/profile" element={<Profile />} />
         <Route path="/library" element={<MyLibrary />} />
         <Route path="/ai-chat" element={<AIChatPage />} />
-
+        <Route path="/events" element={<Events />} />
       </Route>
-
-      <Route path="/events" element={<Events />} />
 
       {/* 3. RUTA CON SOLO HEADER (Chat) */}
       <Route path="/chat" element={
