@@ -537,6 +537,43 @@ export const Home = () => {
     setIsLibraryOpen(true);
   };
 
+  const handleDeleteEvent = async (eventId) => {
+    if (!eventId) return;
+    if (!backendUrl) {
+      setUiMessage({ type: "danger", text: "Backend URL is not configured." });
+      return;
+    }
+    const confirm = window.confirm("Are you sure you want to delete this event? This action cannot be undone.");
+    if (!confirm) return;
+
+    const accessToken = localStorage.getItem("access_token");
+    if (!accessToken) {
+      setUiMessage({ type: "danger", text: "No active session. Please log in again." });
+      return;
+    }
+
+    try {
+      const resp = await fetch(`${backendUrl}/api/events/${eventId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.msg || err.message || "Could not delete event.");
+      }
+
+      dispatch({ type: "delete_event", payload: eventId });
+      setSelectedEvent(null);
+      setIsEventDetailsOpen(false);
+      setUiMessage({ type: "success", text: "Event deleted successfully." });
+    } catch (e) {
+      setUiMessage({ type: "danger", text: e.message });
+    }
+  };
+
   return (
     <div className="container-fluid home-fixed-wrap" style={{ backgroundColor: "var(--book-bg)" }}>
       <div
@@ -895,7 +932,12 @@ export const Home = () => {
 
             <CreateEventModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleAddEvent} />
 
-            <EventDetailsModal isOpen={isEventDetailsOpen} onClose={() => setIsEventDetailsOpen(false)} event={selectedEvent} />
+            <EventDetailsModal
+              isOpen={isEventDetailsOpen}
+              onClose={() => setIsEventDetailsOpen(false)}
+              event={selectedEvent}
+              onDelete={handleDeleteEvent}
+            />
           </div>
         </div>
 
