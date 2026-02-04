@@ -131,7 +131,36 @@ def get_users():
     users = User.query.all()
     return jsonify([u.serialize() for u in users]), 200
 
+@api.route('/users/<int:user_id>', methods=['GET'])
+def get_user(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+    return jsonify(user.serialize()), 200
 
+@api.route('/users/<int:user_id>', methods=['PUT'])
+def update_user(user_id):
+    data = request.get_json() or {}
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+    if 'username' in data and data['username']:
+        user.username = data['username'].strip()
+    img = data.get('image_avatar')
+    if img is not None and isinstance(img, str):
+        img = img.strip()
+        if img and (img.startswith('http://') or img.startswith('https://')):
+            user.image_avatar = img
+    db.session.commit()
+    return jsonify(user.serialize()), 200
+
+@api.route('/users/<int:user_id>', methods=['DELETE'])
+def delete_user(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+    db.session.delete(user)
+    db.session.commit()
 @api.route("/books/search", methods=["GET"])
 def books_search():
     title = request.args.get("title", "").strip()
@@ -256,6 +285,13 @@ def get_user_events(user_id):
 
     return jsonify([event.serialize() for event in events]), 200
 
+
+@api.route("/events", methods=["GET"])
+def get_all_events():
+    events = Event.query.order_by(Event.date.asc(), Event.time.asc()).all()
+    return jsonify([e.serialize() for e in events]), 200
+
+
 @api.route("/events", methods=["POST"])
 def create_event():
     data = request.get_json() or {}
@@ -287,6 +323,32 @@ def create_event():
     db.session.commit()
 
     return jsonify(event.serialize()), 201
+
+
+@api.route("/events/<int:event_id>", methods=["DELETE"])
+def delete_event(event_id):
+    """
+    Delete an event completely (and its user associations).
+    For ahora se permite a cualquier usuario autenticado.
+    """
+    auth_header = request.headers.get("Authorization") or ""
+    user_id = None
+    if auth_header.startswith("Bearer "):
+        token = auth_header.split(" ", 1)[1].strip()
+        user_id = verify_token(token)
+
+    if not user_id:
+        return jsonify({"msg": "Missing or invalid auth token"}), 401
+
+    event = Event.query.get(event_id)
+    if not event:
+        return jsonify({"msg": "Event not found"}), 404
+
+    # SQLAlchemy se encarga de limpiar la tabla intermedia user_event
+    db.session.delete(event)
+    db.session.commit()
+
+    return jsonify({"msg": "Event deleted"}), 200
 
 @api.route("/events/<int:event_id>/signup", methods=["POST"])
 def singup_to_event(event_id):
@@ -630,19 +692,30 @@ def create_or_join_channel_by_isbn():
                 "thumbnail": thumbnail,
                 "authors": authors if isinstance(authors, list) else [authors] if authors else [],
                 "members": [user_id_str],
-            }
+            },
         )
+
+        # Crear el canal si no existe; si ya existe, simplemente asegurarse de que el usuario es miembro.
         try:
             channel.create(user_id_str)
         except Exception:
-            channel.add_members([user_id_str])
-        return jsonify({
-            "message": "Successfully joined channel",
-            "channel_id": channel_id,
-            "book_title": book_title,
-            "isbn": isbn,
-        }), 200
+            try:
+                channel.add_members([user_id_str])
+            except Exception:
+                # Si ya es miembro o hay cualquier otro problema no crítico, lo ignoramos:
+                # desde el punto de vista de la UX el usuario ya está "en el chat".
+                pass
+
+        return jsonify(
+            {
+                "message": "Successfully joined channel",
+                "channel_id": channel_id,
+                "book_title": book_title,
+                "isbn": isbn,
+            }
+        ), 200
     except Exception as e:
+        # Evitar que un fallo puntual en Stream rompa la UI: devolver error controlado
         return jsonify({"message": f"Error creating/joining channel: {str(e)}"}), 500
 
 
@@ -669,46 +742,32 @@ def get_channel_members_by_isbn():
     channel_id = f"book-isbn-{isbn}"
     channel_cid = f"messaging:{channel_id}"
 
+    client = get_stream_client()
+
+    # Caso 1: intentar obtener miembros desde el propio canal
     try:
-        client = get_stream_client()
         channel = client.channel("messaging", channel_id)
         result = channel.query_members(limit=50)
         members_data = result.get("members", [])
-        users = []
-        for m in members_data:
-            u = m.get("user") or m
-            user_id_str = u.get("id") or m.get("user_id")
-            if not user_id_str:
-                continue
-            users.append({
+    except Exception:
+        # Caso 2: si el canal aún no existe o falla query_members, devolver lista vacía
+        # (desde la Home solo necesitamos saber quién está ahora mismo, no es crítico).
+        return jsonify({"members": [], "count": 0}), 200
+
+    users = []
+    for m in members_data:
+        u = m.get("user") or m
+        user_id_str = u.get("id") or m.get("user_id")
+        if not user_id_str:
+            continue
+        users.append(
+            {
                 "id": str(user_id_str),
                 "name": u.get("name") or str(user_id_str),
                 "image": u.get("image"),
-            })
-        return jsonify({"members": users, "count": len(users)}), 200
-    except AttributeError:
-        try:
-            result = client.query_members(
-                filter_conditions={"cid": channel_cid},
-                limit=50,
-            )
-            members_data = result.get("members", [])
-            users = []
-            for m in members_data:
-                u = m.get("user") or m
-                user_id_str = u.get("id") or m.get("user_id")
-                if not user_id_str:
-                    continue
-                users.append({
-                    "id": str(user_id_str),
-                    "name": u.get("name") or str(user_id_str),
-                    "image": u.get("image"),
-                })
-            return jsonify({"members": users, "count": len(users)}), 200
-        except Exception as e:
-            return jsonify({"message": f"Error fetching channel members: {str(e)}"}), 500
-    except Exception as e:
-        return jsonify({"message": f"Error fetching channel members: {str(e)}"}), 500
+            }
+        )
+    return jsonify({"members": users, "count": len(users)}), 200
 
 
 @api.route("/library/<int:user_id>/books", methods=["GET"])

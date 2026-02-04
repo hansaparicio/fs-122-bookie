@@ -1,7 +1,7 @@
 import React from "react";
 import "./EventDetailsModal.css";
 
-const EventDetailsModal = ({ isOpen, onClose, event }) => {
+const EventDetailsModal = ({ isOpen, onClose, event, onDelete }) => {
   if (!isOpen || !event) return null;
 
   const creator = event.created_by_name || event.created_by?.username || event.created_by || "Unknown";
@@ -65,6 +65,15 @@ const EventDetailsModal = ({ isOpen, onClose, event }) => {
           <button className="edm-btn edm-btn-ghost" onClick={onClose} type="button">
             Close
           </button>
+          {onDelete && (
+            <button
+              className="edm-btn edm-btn-danger"
+              type="button"
+              onClick={() => onDelete(event.id)}
+            >
+              Delete
+            </button>
+          )}
         </div>
       </div>
     </div>
